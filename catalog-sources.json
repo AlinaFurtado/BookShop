@@ -1,0 +1,171 @@
+{
+    "checkedAt":  "2026-10-15T10:44:34.1307016Z",
+    "note":  "Book descriptions and theme tags are original curated summaries. Ratings, work IDs and cover IDs below were retrieved from Open Library; ratings can change.",
+    "verified":  [
+                     {
+                         "title":  "The Hobbit",
+                         "url":  "https://openlibrary.org/search.json?title=The%20Hobbit\u0026author=J.R.R.%20Tolkien\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL27482W"
+                     },
+                     {
+                         "title":  "A Psalm for the Wild-Built",
+                         "url":  "https://openlibrary.org/search.json?title=A%20Psalm%20for%20the%20Wild-Built\u0026author=Becky%20Chambers\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL22561871W"
+                     },
+                     {
+                         "title":  "The House in the Cerulean Sea",
+                         "url":  "https://openlibrary.org/search.json?title=The%20House%20in%20the%20Cerulean%20Sea\u0026author=TJ%20Klune\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL20656224W"
+                     },
+                     {
+                         "title":  "Legends \u0026 Lattes",
+                         "url":  "https://openlibrary.org/search.json?title=Legends%20%26%20Lattes\u0026author=Travis%20Baldree\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL27591348W"
+                     },
+                     {
+                         "title":  "Project Hail Mary",
+                         "url":  "https://openlibrary.org/search.json?title=Project%20Hail%20Mary\u0026author=Andy%20Weir\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL21745884W"
+                     },
+                     {
+                         "title":  "The Martian",
+                         "url":  "https://openlibrary.org/search.json?title=The%20Martian\u0026author=Andy%20Weir\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL17091839W"
+                     },
+                     {
+                         "title":  "The Long Way to a Small, Angry Planet",
+                         "url":  "https://openlibrary.org/search.json?title=The%20Long%20Way%20to%20a%20Small%2C%20Angry%20Planet\u0026author=Becky%20Chambers\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL17716925W"
+                     },
+                     {
+                         "title":  "Piranesi",
+                         "url":  "https://openlibrary.org/search.json?title=Piranesi\u0026author=Susanna%20Clarke\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL20893680W"
+                     },
+                     {
+                         "title":  "The Name of the Wind",
+                         "url":  "https://openlibrary.org/search.json?title=The%20Name%20of%20the%20Wind\u0026author=Patrick%20Rothfuss\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL8479867W"
+                     },
+                     {
+                         "title":  "Howl\u0027s Moving Castle",
+                         "url":  "https://openlibrary.org/search.json?title=Howl\u0027s%20Moving%20Castle\u0026author=Diana%20Wynne%20Jones\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL60149W"
+                     },
+                     {
+                         "title":  "A Wizard of Earthsea",
+                         "url":  "https://openlibrary.org/search.json?title=A%20Wizard%20of%20Earthsea\u0026author=Ursula%20K.%20Le%20Guin\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL59798W"
+                     },
+                     {
+                         "title":  "The Night Circus",
+                         "url":  "https://openlibrary.org/search.json?title=The%20Night%20Circus\u0026author=Erin%20Morgenstern\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL16086747W"
+                     },
+                     {
+                         "title":  "The Thursday Murder Club",
+                         "url":  "https://openlibrary.org/search.json?title=The%20Thursday%20Murder%20Club\u0026author=Richard%20Osman\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL20878311W"
+                     },
+                     {
+                         "title":  "The Murder of Roger Ackroyd",
+                         "url":  "https://openlibrary.org/search.json?title=The%20Murder%20of%20Roger%20Ackroyd\u0026author=Agatha%20Christie\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL471932W"
+                     },
+                     {
+                         "title":  "The Hound of the Baskervilles",
+                         "url":  "https://openlibrary.org/search.json?title=The%20Hound%20of%20the%20Baskervilles\u0026author=Arthur%20Conan%20Doyle\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL262454W"
+                     },
+                     {
+                         "title":  "The Devotion of Suspect X",
+                         "url":  "https://openlibrary.org/search.json?title=The%20Devotion%20of%20Suspect%20X\u0026author=Keigo%20Higashino\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL15637392W"
+                     },
+                     {
+                         "title":  "Pride and Prejudice",
+                         "url":  "https://openlibrary.org/search.json?title=Pride%20and%20Prejudice\u0026author=Jane%20Austen\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL66554W"
+                     },
+                     {
+                         "title":  "The Flatshare",
+                         "url":  "https://openlibrary.org/search.json?title=The%20Flatshare\u0026author=Beth%20O\u0027Leary\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL20664315W"
+                     },
+                     {
+                         "title":  "Book Lovers",
+                         "url":  "https://openlibrary.org/search.json?title=Book%20Lovers\u0026author=Emily%20Henry\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL24801992W"
+                     },
+                     {
+                         "title":  "The Love Hypothesis",
+                         "url":  "https://openlibrary.org/search.json?title=The%20Love%20Hypothesis\u0026author=Ali%20Hazelwood\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL24178205W"
+                     },
+                     {
+                         "title":  "Little Women",
+                         "url":  "https://openlibrary.org/search.json?title=Little%20Women\u0026author=Louisa%20May%20Alcott\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL29983W"
+                     },
+                     {
+                         "title":  "Anne of Green Gables",
+                         "url":  "https://openlibrary.org/search.json?title=Anne%20of%20Green%20Gables\u0026author=L.%20M.%20Montgomery\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL77746W"
+                     },
+                     {
+                         "title":  "Frankenstein",
+                         "url":  "https://openlibrary.org/search.json?title=Frankenstein\u0026author=Mary%20Shelley\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL26860869W"
+                     },
+                     {
+                         "title":  "The Picture of Dorian Gray",
+                         "url":  "https://openlibrary.org/search.json?title=The%20Picture%20of%20Dorian%20Gray\u0026author=Oscar%20Wilde\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL8193416W"
+                     },
+                     {
+                         "title":  "In Watermelon Sugar",
+                         "url":  "https://openlibrary.org/search.json?title=In%20Watermelon%20Sugar\u0026author=Richard%20Brautigan\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL29654W"
+                     },
+                     {
+                         "title":  "Before the Coffee Gets Cold",
+                         "url":  "https://openlibrary.org/search.json?title=Before%20the%20Coffee%20Gets%20Cold\u0026author=Toshikazu%20Kawaguchi\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL20832477W"
+                     },
+                     {
+                         "title":  "The Midnight Library",
+                         "url":  "https://openlibrary.org/search.json?title=The%20Midnight%20Library\u0026author=Matt%20Haig\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL20965973W"
+                     },
+                     {
+                         "title":  "Atomic Habits",
+                         "url":  "https://openlibrary.org/search.json?title=Atomic%20Habits\u0026author=James%20Clear\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL17930368W"
+                     },
+                     {
+                         "title":  "Deep Work",
+                         "url":  "https://openlibrary.org/search.json?title=Deep%20Work\u0026author=Cal%20Newport\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL17713267W"
+                     },
+                     {
+                         "title":  "A Short History of Nearly Everything",
+                         "url":  "https://openlibrary.org/search.json?title=A%20Short%20History%20of%20Nearly%20Everything\u0026author=Bill%20Bryson\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL74128W"
+                     },
+                     {
+                         "title":  "The Art of Gathering",
+                         "url":  "https://openlibrary.org/search.json?title=The%20Art%20of%20Gathering\u0026author=Priya%20Parker\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL19745234W"
+                     },
+                     {
+                         "title":  "The Travelling Cat Chronicles",
+                         "url":  "https://openlibrary.org/search.json?title=The%20Travelling%20Cat%20Chronicles\u0026author=Hiro%20Arikawa\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL19551795W"
+                     },
+                     {
+                         "title":  "All Systems Red",
+                         "url":  "https://openlibrary.org/search.json?title=All%20Systems%20Red\u0026author=Martha%20Wells\u0026limit=3\u0026fields=key,title,author_name,cover_i,ratings_average,ratings_count,first_publish_year",
+                         "work":  "/works/OL17914663W"
+                     }
+                 ]
+}
