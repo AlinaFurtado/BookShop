@@ -46,11 +46,20 @@ function App() {
   const [passportId, setPassportId] = useState(null)
   const [pendingKey, setPendingKey] = useState('')
   const [toast, setToast] = useState('')
+  const [aiStatus, setAiStatus] = useState(null)
+  const [aiStatusLoading, setAiStatusLoading] = useState(true)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiResult, setAiResult] = useState(null)
+  const [aiError, setAiError] = useState('')
+  const [aiFeedback, setAiFeedback] = useState('')
+  const [pipResetKey, setPipResetKey] = useState(0)
   const resultRequest = useRef({ sequence: 0, controller: null })
+  const aiRequest = useRef({ sequence: 0, controller: null, running: false })
   const mutationLock = useRef(false)
   const pendingAction = useRef(null)
   const discoverRef = useRef(null)
   const trendingRef = useRef(null)
+  const aiResultsRef = useRef(null)
   const toastTimer = useRef(null)
   const sessionGeneration = useRef(0)
   const successfulQuery = useRef(null)
@@ -60,6 +69,7 @@ function App() {
   useEffect(() => {
     const controller = new AbortController()
     const activeResultRequest = resultRequest.current
+    const activeAiRequest = aiRequest.current
     let alive = true
     async function initializeAccount() {
       try {
@@ -85,10 +95,19 @@ function App() {
       } catch (error) { if (alive && resultRequest.current.sequence === 0) setResultError(error.message) }
       finally { if (alive && resultRequest.current.sequence === 0) setLoadingKind('') }
     }
+    async function initializeRecommendations() {
+      try {
+        const status = await api('/api/recommendations/status', { signal: controller.signal })
+        if (alive) setAiStatus(status)
+      } catch {
+        if (alive) setAiStatus({ available: false, message: 'Pip’s AI recommendation desk is unavailable right now. You can still browse by genre.' })
+      } finally { if (alive) setAiStatusLoading(false) }
+    }
     // Signing in and opening a saved shelf do not wait for the external catalog.
     initializeAccount()
     initializeCatalog()
-    return () => { alive = false; controller.abort(); clearTimeout(toastTimer.current); activeResultRequest.controller?.abort() }
+    initializeRecommendations()
+    return () => { alive = false; controller.abort(); clearTimeout(toastTimer.current); activeResultRequest.controller?.abort(); activeAiRequest.sequence += 1; activeAiRequest.running = false; activeAiRequest.controller?.abort() }
   }, [])
 
   function notify(message) {
@@ -156,6 +175,9 @@ function App() {
       sessionGeneration.current += 1
       setShelfLoading(false)
       setUser(null); setShelf([]); setSelectedBook(null); setShelfError('')
+      aiRequest.current.sequence += 1; aiRequest.current.controller?.abort(); aiRequest.current.running = false
+      setAiLoading(false); setAiResult(null); setAiError(''); setAiFeedback('')
+      setPipResetKey((current) => current + 1)
       setLibraryOpen(false)
       setPassportId(null)
       notify('Signed out. Your books will be here when you return.')
@@ -163,7 +185,7 @@ function App() {
     finally { mutationLock.current = false; setPendingKey('') }
   }
 
-  // Catalog book.id is an Open Library work key. The server returns a saved
+  // Catalog book.id is a provider key. The server returns a saved
   // entry with a numeric database id, used for later PATCH and DELETE requests.
   async function performAdd(book, status = 'WANT_TO_READ', finishDate = null) {
     const workId = book.workId || book.id
@@ -271,6 +293,47 @@ function App() {
     notify('Search stopped. Your previous picks are still here.')
   }
 
+  function focusAiResults() {
+    requestAnimationFrame(() => {
+      aiResultsRef.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' })
+      aiResultsRef.current?.focus({ preventScroll: true })
+    })
+  }
+
+  async function recommendBooks({ prompt, includeOlder }) {
+    if (aiRequest.current.running || sessionLoading || !aiStatus?.available) return
+    if (!user) { openAuth('login'); return }
+    if (prompt.length < 10 || prompt.length > 600) return
+    const controller = new AbortController()
+    const sequence = ++aiRequest.current.sequence
+    const generation = sessionGeneration.current
+    aiRequest.current.controller = controller
+    aiRequest.current.running = true
+    setAiLoading(true); setAiError(''); setAiFeedback(''); setAiResult(null)
+    focusAiResults()
+    try {
+      const result = await api('/api/recommendations', { method: 'POST', signal: controller.signal, timeout: 55000, body: { prompt, genre, minRating: minRating ? Number(minRating) : null, includeOlder } })
+      if (sequence !== aiRequest.current.sequence || generation !== sessionGeneration.current) return
+      setAiResult(result)
+      focusAiResults()
+    } catch (error) {
+      if (controller.signal.aborted || sequence !== aiRequest.current.sequence || generation !== sessionGeneration.current) return
+      if (error.status === 401) {
+        setUser(null); setShelf([])
+        setAiError('Your session ended. Sign in, then press “Find my next chapter” again when you’re ready.')
+        openAuth('login')
+      } else setAiError(error.message)
+    } finally {
+      if (sequence === aiRequest.current.sequence) { aiRequest.current.running = false; setAiLoading(false) }
+    }
+  }
+
+  function cancelRecommendations() {
+    aiRequest.current.sequence += 1; aiRequest.current.controller?.abort(); aiRequest.current.running = false
+    setAiLoading(false); setAiError('')
+    setAiFeedback('Stopped waiting for these recommendations. A request already sent to the AI service may still finish and count toward its allowance.')
+  }
+
   const loadedCountLabel = pageMeta.total == null
     ? `${books.length.toLocaleString()} ${books.length === 1 ? 'book' : 'books'} shown`
     : `${books.length.toLocaleString()} of ${Number(pageMeta.total).toLocaleString()} books`
@@ -297,12 +360,20 @@ function App() {
           <div className="reading-strip"><span className="strip-icon"><Icon name="coffee" size={21} /></span><p>{user ? <><strong>{currentlyReading ? `${currentlyReading} ${currentlyReading === 1 ? 'world' : 'worlds'} open right now.` : 'No reading deadlines here.'}</strong> {readCount ? `${readCount} ${readCount === 1 ? 'book' : 'books'} finished. Every chapter counts.` : 'Read what you love. Love what you read.'}</> : <><strong>A library that grows with you.</strong> No reading streaks. No guilt. Just good books.</>}</p><span aria-hidden="true">✦</span></div>
         </div>
 
-          <PipPanel busy={!!loadingKind} onMood={(nextGenre) => {
+          <PipPanel key={pipResetKey} busy={!!loadingKind} aiStatus={aiStatus} aiStatusLoading={aiStatusLoading} aiBusy={aiLoading} sessionLoading={sessionLoading} signedIn={!!user} filtersLabel={`${genre || 'Any genre'} · ${minRating ? `${minRating}+ stars` : 'Any rating'}`} onRecommend={recommendBooks} onCancelRecommend={cancelRecommendations} onMood={(nextGenre) => {
             setGenre(nextGenre)
             setTitle('')
             loadResults('featured', { filters: { genre: nextGenre, minRating } })
           }} />
         </div>
+
+        {(aiLoading || aiResult || aiError || aiFeedback) && <section className="panel ai-results-panel" ref={aiResultsRef} tabIndex={-1} aria-labelledby="ai-results-title" aria-busy={aiLoading}>
+          <div className="discover-heading"><div><span className="eyebrow">PIP’S VERY PARTICULAR PICKS</span><h2 id="ai-results-title">Your next plot twist<span className="purple"> ✦</span></h2><p className="results-subtitle">Real catalog books, matched to your description. A suggestion, never a reading assignment.</p></div><span className="ai-results-stamp"><Icon name="spark" size={17} />Picked with AI</span></div>
+          {aiLoading && <div className="results-loading" role="status"><span className="spinner" /><div><strong>Interpreting your mood. Checking real books.</strong><p>This can take a little while. Pip is a goblin, not a speed-reader.</p></div><button className="text-button" onClick={cancelRecommendations}>Cancel</button></div>}
+          {aiError && <p className="inline-error" role="alert">{aiError} You can still use the regular catalog below.</p>}
+          {aiFeedback && <p className="ai-result-message" role="status">{aiFeedback}</p>}
+          {aiResult && <><p className="ai-result-message" role="status">{aiResult.message || `${aiResult.books.length} ${aiResult.books.length === 1 ? 'book' : 'books'} for your next chapter.`}</p><div className="ai-result-sources"><span>{aiResult.minPublicationYear ? `First published ${aiResult.minPublicationYear}–${aiResult.maxPublicationYear}` : 'Older books included'} · English editions</span>{aiResult.sources?.length > 0 && <span>Book data: {aiResult.sources.join(' · ')}</span>}{aiResult.cached && <span>Reusing a recent match to save the shared allowance.</span>}</div><div className="book-cards">{aiResult.books.map((book) => <BookCard key={book.id} book={book} entry={shelf.find((entry) => entry.workId === book.id)} busy={pendingKey === `add:${book.id}`} locked={!!pendingKey || sessionLoading} onOpen={setSelectedBook} onAdd={addBook} onStatus={updateStatus} />)}</div>{!aiResult.books.length && <p className="ai-empty-hint">Try fewer requirements, a broader genre, or the “Include older books” option. We won’t invent a match.</p>}<p className="catalog-note">AI explanations are based on available catalog information and can be imperfect. Ratings belong to the source named in each book’s details. Google Books edition dates may differ from a work’s original publication year.</p></>}
+        </section>}
 
         <TrendingSection sectionRef={trendingRef} shelf={shelf} pendingKey={pendingKey} locked={!!pendingKey || sessionLoading} onOpen={setSelectedBook} onAdd={addBook} onStatus={updateStatus} />
 
@@ -323,7 +394,7 @@ function App() {
           <p className="catalog-note">Children’s books have their own home: choose Kids in Genre. Surprise Me skips them. Audience labels depend on Open Library’s cataloging.<br />Books, covers & reader ratings from Open Library. Missing cover? We dressed it up. Ratings are never made up.</p>
         </section>
       </main>
-      <footer className="site-footer"><span className="footer-brand"><Icon name="book" size={17} />bookbuddy<span>✦</span></span><p>Made for curious minds & gloriously overflowing shelves.</p><span className="footer-local"><span />Your local reading nook</span></footer>
+      <footer className="site-footer"><span className="footer-brand"><Icon name="book" size={17} />bookbuddy<span>✦</span></span><p>Made for curious minds & gloriously overflowing shelves.</p><span className="footer-local"><span />Your little reading nook</span></footer>
     </div>
     {passportEntry && user && <PassportModal key={passportEntry.id} entry={passportEntry} readerName={user.name} busy={!!pendingKey} onClose={() => setPassportId(null)} onSave={savePassport} onViewBook={(entry) => { setPassportId(null); setSelectedBook(entry) }} />}
     {libraryOpen && user && <LibraryModal entries={shelf} busy={!!pendingKey} onClose={() => setLibraryOpen(false)} onOpen={setSelectedBook} onStatus={updateStatus} />}

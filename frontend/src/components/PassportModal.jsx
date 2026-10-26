@@ -144,7 +144,7 @@ export default function PassportModal({ entry, readerName, busy, onClose, onSave
                       <div className="bbp-id-facts">
                         <div className="bbp-fact"><span className="bbp-label">Book title</span><strong>{entry.title}</strong></div>
                         <div className="bbp-fact"><span className="bbp-label">Written by</span><strong>{entry.author}</strong></div>
-                        <div className="bbp-fact"><span className="bbp-label">Genre · First published</span><strong>{entry.genre || 'Not available'} · {entry.year || 'Not available'}</strong></div>
+                        <div className="bbp-fact"><span className="bbp-label">Genre · {entry.workId?.startsWith('googlebooks:') ? 'Edition published' : 'First published'}</span><strong>{entry.genre || 'Not available'} · {entry.year || 'Not available'}</strong></div>
                       </div>
                     </div>
                     <div className="bbp-fact bbp-reference"><span className="bbp-label">Catalog identity</span><strong>{entry.workId}</strong></div>

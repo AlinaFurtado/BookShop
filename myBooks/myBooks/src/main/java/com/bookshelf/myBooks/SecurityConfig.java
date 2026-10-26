@@ -25,6 +25,7 @@ public class SecurityConfig {
             SecurityContextRepository contextRepository) throws Exception {
         return http
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.POST, "/api/recommendations").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/reviews", "/api/reviews/**").permitAll()
                         .requestMatchers("/api/reviews", "/api/reviews/**").authenticated()
                         .requestMatchers("/api/shelf", "/api/shelf/**", "/api/auth/me").authenticated()

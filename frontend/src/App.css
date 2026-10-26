@@ -362,3 +362,48 @@ h2 { letter-spacing: -.7px; font-size: 26px; line-height: 1.1; }
   .main-nav button { font-size: 9px; gap: 4px; padding: 8px 5px; }
   .main-nav button svg { width: 13px; }
 }
+
+/* Pip's AI corner keeps the same paper, ink and slightly wonky sticker feel. */
+.pip-ai-form { background: #fffbf2; border: 1.5px solid var(--ink); border-radius: 12px; box-shadow: 2px 3px 0 #b7c58d; padding: 16px; margin: 5px 0 24px; }
+.pip-ai-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+.pip-ai-heading .eyebrow { font-size: 7px; letter-spacing: .8px; margin-bottom: 0; line-height: 1.5; }
+.pip-ai-sticker { padding: 4px 7px; background: #f8baa6; border: 1px solid var(--ink); border-radius: 4px; transform: rotate(7deg); font: italic 12px Georgia, serif; white-space: nowrap; }
+.pip-ai-form > label:first-of-type { display: block; font: 19px/1.2 Georgia, serif; margin-bottom: 10px; }
+.pip-ai-form textarea { display: block; width: 100%; resize: vertical; min-height: 105px; max-height: 230px; padding: 11px 12px; border: 1px solid #bba8c8; border-radius: 7px; background: #fffdf7; color: var(--ink); font: inherit; line-height: 1.65; font-size: 12px; }
+.pip-ai-form textarea::placeholder { color: #8a7a8f; opacity: 1; }
+.pip-ai-form textarea:disabled { background: #f1ecdf; opacity: .8; }
+.pip-prompt-help { display: flex; justify-content: space-between; align-items: start; gap: 8px; margin-top: 7px; color: var(--muted); font-size: 9px; }
+.pip-prompt-help button { font-size: 9px; text-align: left; }
+.pip-prompt-help > span { flex-shrink: 0; padding-top: 3px; }
+.pip-filter-summary { font-size: 9px; line-height: 1.7; margin-top: 12px; color: #756788; }
+.pip-older-option { display: flex; align-items: start; gap: 8px; padding: 11px 0; font-size: 11px; line-height: 1.5; cursor: pointer; }
+.pip-older-option input { margin-top: 2px; accent-color: var(--purple); width: 15px; height: 15px; flex-shrink: 0; }
+.pip-older-option small { display: block; color: var(--muted); font-size: 9px; }
+.pip-ai-status { font-size: 10px; line-height: 1.65; margin-bottom: 12px; color: #756788; }
+.pip-ai-actions { display: flex; align-items: center; justify-content: space-between; gap: 9px; flex-wrap: wrap; }
+.pip-ai-actions > .button { flex: 1; min-height: 40px; font-size: 11px; padding: 9px 10px; }
+.pip-ai-actions > .text-button { font-size: 10px; }
+.pip-ai-actions .spinner { width: 14px; height: 14px; }
+.pip-ai-privacy { border-top: 1px dashed #d8c9db; margin-top: 14px; padding-top: 11px; color: #80718b; font-size: 9px; line-height: 1.7; }
+.ai-results-panel { padding: 25px; background: #f4edfb; margin-top: 27px; scroll-margin-top: 22px; }
+.ai-results-panel:focus { outline: 2px solid var(--purple); outline-offset: 5px; }
+.ai-results-stamp { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--purple); color: var(--purple); padding: 9px 10px; border-radius: 6px; transform: rotate(3deg); font-size: 10px; white-space: nowrap; background: #fffaf0; }
+.ai-result-message { color: #655570; font-size: 12px; line-height: 1.8; margin: 14px 0; }
+.ai-result-sources { display: flex; flex-wrap: wrap; gap: 5px 14px; margin: 0 0 18px; color: var(--muted); font-size: 9px; line-height: 1.7; }
+.ai-empty-hint { padding: 18px; border: 1px dashed #bda5d1; border-radius: 8px; color: #756788; background: #fffaf0; font-size: 12px; line-height: 1.8; }
+.description-attribution { color: var(--muted); font-size: 9px; line-height: 1.8; margin-top: 9px; }
+.description-attribution > span { display: block; }
+.description-attribution .spinner { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: middle; }
+@media (min-width: 621px) and (max-width: 880px) {
+  .pip-ai-form { grid-column: 1 / -1; grid-row: 6; margin: 22px 0 0; }
+  .pip-ai-form textarea { min-height: 88px; }
+}
+@media (max-width: 620px) {
+  .pip-ai-form { margin: 0 0 24px; padding: 14px; }
+  .pip-ai-form textarea { font-size: 13px; }
+  .pip-ai-privacy { font-size: 9px; }
+  .ai-results-panel { padding: 20px 13px 16px; margin-top: 24px; }
+  .ai-result-message { font-size: 11px; }
+  .ai-results-stamp { font-size: 9px; }
+  .ai-result-sources { font-size: 8px; }
+}

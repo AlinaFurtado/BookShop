@@ -10,12 +10,14 @@ flowchart LR
     Vite --> Spring[Spring Boot controllers]
     Spring --> Service[Java services]
     Spring --> Repo[JPA repository]
-    Repo --> H2[(H2 local file)]
+    Repo --> DB[(H2 locally / Neon in production)]
     Service --> Catalog[Bundled book catalog]
     Service -->|Search when online| OL[Open Library]
+    Service -->|Optional metadata| Google[Google Books]
+    Service -->|Optional preference extraction and ranking| Groq[Hosted Groq model]
 ```
 
-React controls what you see. Java receives requests, checks permission and input, and decides what data to return. JPA translates repository operations into database work. H2 stores the data between runs. Open Library supplies public book metadata; it does not store your shelf.
+React controls what you see. Java receives requests, checks permission and input, and decides what data to return. JPA translates repository operations into database work. H2 stores local data; the deployed production profile uses Neon PostgreSQL. Open Library and optional Google Books supply public metadata; they do not store your shelf.
 
 In development, React is served on port 5173 and Java on port 8080. `vite.config.js` forwards requests beginning with `/api`. That is why React can call `/api/shelf` without writing a different host into every request. The ordinary launcher instead serves the compiled React app directly from Spring on port 8080, requiring just one Java process.
 
@@ -96,7 +98,7 @@ current.filter(entry => entry.id !== id)
 
 Find the search form in React. Its submit handler prevents the browser's default form navigation, sends a search request, and shows loading, empty, or error states.
 
-`GET /api/books/browse` accepts optional `title`, `genre`, and `minRating`, plus a one-based `page`. `BookController` passes them to `CatalogService`. With no selection, the bundled highlights appear immediately. A search term or either filter triggers `OpenLibraryService`; on an outage the same selections filter the local fallback. The response includes `books`, pagination, a source, and an explanatory message.
+`GET /api/books/browse` accepts optional `title`, `genre`, and `minRating`, plus a one-based `page`. `BookController` passes them to `CatalogService`. The initial browse and independent filters query `OpenLibraryService`; on an outage the same selections filter the local fallback. The response includes `books`, pagination, a source, and an explanatory message.
 
 The external API supports subject queries and rating sorting. Its average-rating field is returned as metadata but is not a supported search field. A minimum rating therefore requests rated candidates using `ratings_count:[1 TO *]` and `sort=rating`, then Java checks each book's actual `ratings_average`. Without a minimum, the request has no rating condition, so unrated books are included. Requesting a genre applies a subject query independently of the rating selection. We cannot know the total number of average-rating matches without scanning all candidate pages, so that total is null and the interface reports only books loaded.
 

@@ -1,4 +1,26 @@
-# Verified local build
+# Verification record
+
+## 27 October 2026: hosted AI and Google Books integration
+
+- Final React lint and production build passed for the new Pip panel, result
+  cards, Google cover/rating labels and detail enrichment.
+- The backend package/test command was requested and declined. The new Java
+  sources and tests have been statically reviewed, but have **not** been compiled
+  or executed locally. No successful backend result is claimed for this update.
+- New tests use local HTTP stubs and disposable H2 databases. They cover Groq
+  strict output/evidence validation, quota and cache boundaries, Google metadata,
+  exact Open Library identity/description reads, recent original-year and Kids
+  filters, and Google-ID shelf/passport/review operations.
+- Provider keys remain in Render. No live Groq/Google request or Neon mutation
+  was performed during development. End-to-end provider behavior and actual
+  recommendation quality still need checking after Render builds the commit.
+- No local model, dependency installation or database schema change was added.
+  The current running website is unchanged until the new sources are deployed.
+
+The sections below are historical verification results for earlier versions;
+they do not substitute for testing this integration.
+
+## Earlier verified local build
 
 Verified on 15 October 2026 on this Windows laptop.
 

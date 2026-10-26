@@ -106,7 +106,7 @@ public class ReviewController {
     }
 
     private void validateWorkId(String id) {
-        if (id == null || !id.matches("(?:/works/OL\\d+W|curated:[a-z0-9-]{1,80})")) badRequest("Invalid book identifier.");
+        if (!BookIdentifier.valid(id)) badRequest("Invalid book identifier.");
     }
 
     private void validateReview(ReviewRequest request) {

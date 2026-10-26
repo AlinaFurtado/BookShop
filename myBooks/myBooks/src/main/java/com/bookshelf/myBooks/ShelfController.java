@@ -98,7 +98,7 @@ public class ShelfController {
     }
 
     private void validateBook(BookPreview book) {
-        if (book.id() == null || !book.id().matches("(?:/works/OL\\d+W|curated:[a-z0-9-]{1,80})")) badRequest("Invalid book identifier.");
+        if (!BookIdentifier.valid(book.id())) badRequest("Invalid book identifier.");
         text(book.title(), "title", 500, true);
         text(book.author(), "author", 500, true);
         text(book.genre(), "genre", 100, false);

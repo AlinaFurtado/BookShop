@@ -442,6 +442,28 @@ class CatalogFilterTests {
     }
 
     @Test
+    void aiKeywordsKeepTheRecentEnglishAndAudienceRulesInsteadOfBecomingAnExplicitTitleSearch() {
+        int year = java.time.Year.now(java.time.ZoneOffset.UTC).getValue();
+        Map<String, Object> french = datedBook("OL96000003W", year);
+        french.put("editions", Map.of("docs", List.of(Map.of("title", "Un roman", "language", List.of("fre")))));
+        Map<String, Object> kids = datedBook("OL96000004W", year);
+        kids.put("subject", List.of("Children's fiction"));
+        audienceDocs = List.of(datedBook("OL96000001W", year), datedBook("OL96000002W", 1980), french, kids);
+        OpenLibraryService service = new OpenLibraryService(true, baseUrl());
+        var current = service.recommendationPage(List.of("magic\" OR *:*", "friendship"), "Fantasy", null, false);
+        assertEquals(List.of("/works/OL96000001W"), current.books().stream().map(BookPreview::id).toList());
+        String query = requests.getFirst().get("q");
+        assertTrue(query.contains(PublicationWindow.forRequest("", false).query()));
+        assertTrue(query.contains("language:eng"));
+        assertTrue(query.contains("\"magic OR\""), "Model search syntax must become a literal phrase");
+        assertFalse(query.contains("*:*"));
+        var older = service.recommendationPage(List.of("friendship"), "Fantasy", null, true);
+        assertEquals(List.of("/works/OL96000001W", "/works/OL96000002W"), older.books().stream().map(BookPreview::id).toList());
+        assertTrue(requests.getLast().get("q").contains("language:eng"));
+        assertFalse(requests.getLast().get("q").contains("first_publish_year:"));
+    }
+
+    @Test
     void oldClassicsRequireAnExplicitSearchInsteadOfFillingARecentGenreWithOldBooks() {
         Map<String, Object> classic = datedBook("OL94000005W", 1978);
         classic.put("subject", List.of("Classics"));

@@ -4,8 +4,9 @@ This is the first public demo deployment. The application runs on Render and
 stores accounts, shelves, passports and Book Buddy reviews in Neon PostgreSQL.
 Visitors open the public HTTPS address; your laptop can be switched off.
 
-No AI provider, paid API, local model, Docker Desktop installation or additional
-database server is required. Use the Free service plan and leave payment details
+The core app requires no AI provider, paid API, local model, Docker Desktop
+installation or additional database server. Optional hosted AI and Google Books
+metadata are described in [AI_SETUP.md](AI_SETUP.md). Use the Free service plan and leave payment details
 unset for the requested no-charge setup. Free quotas and provider restrictions
 still apply. Render can suspend services or disable builds when allowances run
 out. A sleeping Free service can take about a minute to wake.
@@ -30,7 +31,9 @@ docs/DEPLOYMENT.md
 ```
 
 The repository must also contain the existing React sources and lockfile,
-backend sources and tests, `mvnw`, and `.mvn/wrapper/maven-wrapper.properties`.
+backend sources and tests. The current Dockerfile uses a Maven build image, so
+Render does not require the local `mvnw` wrapper or hidden `.mvn` directory.
+Keep those wrapper files in your project for local development.
 Do not upload `node_modules`, `dist`, `target`, `.run`, database files, backups,
 logs, archives or credentials. The Docker context uses an explicit source
 allowlist. The image copies only the built application into its runtime stage.
@@ -113,14 +116,17 @@ Use the HTTPS URL Render shows after the service becomes Live:
 
 Sessions currently live in server memory. A restart or sleep can require signing
 in again; saved data remains in Neon. Then replace “Coming soon” in the README
-with the actual public URL. AI free-text recommendations remain a later step.
+with the actual public URL. For optional free-text recommendations, follow
+[AI_SETUP.md](AI_SETUP.md) and keep provider keys in Render environment variables.
 
 ## Troubleshooting
 
 - **Dockerfile not found:** upload it at the repository root and leave Root
   Directory empty. Ensure Windows has not renamed it `Dockerfile.txt`.
-- **Missing wrapper/lockfile:** upload the existing `.mvn` folder, `mvnw`, and
-  `frontend/package-lock.json` at their original paths.
+- **Missing wrapper/lockfile:** use the current root Dockerfile, whose backend
+  stage starts with `FROM maven:3.9.16-eclipse-temurin-21-noble AS backend`.
+  Upload `frontend/package-lock.json` at its original path. An older Dockerfile
+  that copies `.mvn` still requires hidden wrapper files and should be replaced.
 - **Database connection error:** check the three Render variables and Neon
   hostname/database. Do not share screenshots containing credentials.
 - **Schema validation error:** keep the database intact and inspect the specific
