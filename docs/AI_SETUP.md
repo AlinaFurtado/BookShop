@@ -11,7 +11,7 @@ In the service's **Environment** section, save these secrets privately:
 | Variable | Purpose |
 | --- | --- |
 | `GROQ_API_KEY` | Hosted preference extraction and ranking |
-| `GOOGLE_BOOKS_API_KEY` | Optional Google Books metadata and descriptions |
+| `GOOGLE_BOOKS_API_KEY` | Primary discovery catalog, reference books and descriptions |
 
 Keep the existing Neon variables. Do not paste keys into GitHub, React, a JDBC
 URL, a screenshot or this document. No frontend environment variable is needed.
@@ -32,13 +32,23 @@ After the service is Live:
    no provider quota.
 2. Sign in and use the main search's **Describe a book · AI** mode, then press
    **Ask Pip**. Obvious requests such as “I need a fantasy book with dragons”
-   automatically select this mode before submission. **Title or author** is an
-   explicit override for literal book titles. Pip's separate form also works.
+   automatically select this mode before submission, as do “a book like Fourth
+   Wing” and “books similar to Fourth Wing”. **Auto** shows the detected route;
+   **Title or author** is an explicit override for the current draft. Editing
+   that draft returns to Auto. Pip's separate form also works.
 3. Check that up to four real books appear with catalog evidence, source labels
    and the chosen filters. Fewer or no books is a valid result when metadata is
    insufficient; no book or rating is fabricated.
 4. Open a book's details, then save it to Want to Read or Already Read. Confirm
    it remains after refresh. Completed books keep the normal passport flow.
+5. Inspect **Search connections** after a request. It distinguishes a successful
+   provider response, no matches, filtered records, configuration problems,
+   quota limits and temporary failures. These outcomes describe that request;
+   the `/status` booleans alone do not verify a working provider connection.
+6. To explore another batch for the same request, click **Find different picks**.
+   It explicitly bypasses the AI response cache and excludes up to 12 recently
+   shown IDs. This uses the ordinary shared allowance; more matches are not
+   guaranteed. Repeating the same ordinary submit can reuse its labelled cache.
 
 Google improves metadata but does not provide a public feed of everyone's
 written Google reviews. Existing verified Internet Archive excerpts and
@@ -54,7 +64,10 @@ App.jsx main search or PipPanel.jsx: reader types a description and explicitly s
   -> RecommendationController: login, 8 KiB body limit, JSON conversion
   -> RecommendationService: validate, reader-specific cache, request allowance
   -> GroqRecommendationClient.extract: structured genre/keywords/avoids
-  -> RecommendationCatalog: real Open Library + optional Google candidates
+  -> If a named reference exists: resolve its real catalog record
+  -> Optional grounded refinement: derive traits from that record's metadata
+  -> RecommendationCatalog: Google Books first + Open Library support
+  -> Remove the reference book, study aids, duplicates and excluded previous IDs
   -> GroqRecommendationClient.rank: choose only supplied candidate IDs
   -> Java checks IDs, duplicates and literal catalog evidence
   -> React renders up to four BookCards with existing shelf/detail actions
@@ -68,8 +81,9 @@ submission, and the displayed results retain their submitted prompt/filters.
 Signing in preserves the request but does not send it automatically.
 
 The model is `openai/gpt-oss-20b` hosted by Groq. Java makes HTTP requests; it
-does not download or run a model on the laptop or Render instance. Two bounded
-AI calls are possible per fresh search. No web-search tools, automatic retries,
+does not download or run a model on the laptop or Render instance. At most three
+bounded AI calls are possible per fresh search, including optional reference
+refinement. No web-search tools, automatic transport retries,
 paid model fallback or new runtime dependencies are added.
 
 The model is not a book database and does not search the whole internet.
@@ -80,12 +94,16 @@ so a generated plot summary cannot silently become a book fact.
 ### Filters and publication years
 
 - Suggestions require a verified English edition.
-- By default, original publications must fall within five inclusive calendar
-  years: in 2026 this means 2022–2026. Google `publishedDate` is an edition date;
-  a Google-only match needs Open Library original-year verification to qualify.
-  Unverified recent editions are omitted rather than treated as new originals.
-- **Include older books, too** allows older originals and Google-only volumes.
-  Their dates are labelled as edition dates. Known future publications are omitted.
+- The default date window is five inclusive calendar years: in 2026 this means
+  2022–2026. Google records use `publishedDate`, which describes an **edition**;
+  Open Library records use original first-publication years. The UI distinguishes
+  those dates. Known old originals matched in available metadata are rejected
+  even if Google lists a new edition. An unknown original year is not proof of
+  a new original, and the app does not present it as one.
+- Google candidates no longer require an Open Library duplicate. This removes
+  the earlier bottleneck that discarded most independently valid Google matches.
+- **Include older books, too** removes the recent-year condition. Known future
+  publications remain omitted.
 - The selected genre and minimum rating remain authoritative. Missing ratings
   are excluded only when a minimum is selected. Ratings from different sources
   are not combined.
@@ -96,8 +114,27 @@ so a generated plot summary cannot silently become a book fact.
   to the ranker. Missing content warnings cannot prove that a book is free of a
   topic, so this is not a content-safety guarantee.
 
-Ordinary title/author search retains its existing ability to find older books
-and other languages; the AI suggestion rules do not change that search.
+### Ordinary catalog browsing
+
+Google Books is the primary source when configured. Blank discovery requests
+recent English editions ordered newest first; selected genres and minimum
+ratings still apply. Study guides, summaries, workbooks, magazines and blank
+journals are filtered out. Known old originals are not promoted as new simply
+because a recent reprint exists. Explicit title/author searches allow older
+editions; Google still requires English metadata. Open Library fallback retains
+its original language behavior.
+
+Display pages target 11 matches and preserve overflow from each 20-record Google
+page using `gb:page:offset` cursors. Browsing is bounded to Google's exposed
+search window rather than claiming to enumerate its entire database. Google
+totals are not shown as exact filtered counts. Appended duplicate editions are
+merged by title and known author.
+
+A Google configuration, quota or network failure can start a clearly labelled
+Open Library fallback. A successful Google response with no matching records
+does not silently change sources. An existing Google continuation keeps its
+source and position through errors. Actual **Trending now** remains Open Library
+reader activity; Google search relevance is not falsely labelled a live trend.
 
 ### Opening details
 
@@ -121,7 +158,7 @@ the app does not assume that matching-looking titles identify the same edition.
 | Shared fresh AI searches | 40 per UTC day |
 | Fresh AI searches per signed-in reader | 10 per UTC day; 3 per minute |
 | Concurrent AI searches | 1; another reader gets a retry message |
-| Identical AI response cache | 20 minutes, scoped to the reader and exact filters |
+| Identical AI response cache | 20 minutes, scoped to reader, prompt, filters and exclusions |
 | Google Books outgoing requests | 600 per UTC day; 20 per minute per process |
 | Prompt | 10–600 characters |
 
@@ -132,8 +169,8 @@ distributed billing meter. Groq organization and Google project quotas remain
 authoritative and may stop requests earlier. Free allowances can change.
 
 HTTP calls have timeouts and bounded responses. The catalog phase has a soft
-20-second budget for starting extra lookups; lock waits and active calls can
-extend total time. The browser waits up to 55 seconds for recommendations.
+18-second budget for starting supporting lookups; lock waits and active calls
+can extend total time. The browser waits up to 75 seconds for recommendations.
 Cancelling stops its wait; a server/provider request may still finish and use
 quota. Opening details may take several provider calls and can time out without
 affecting shelf actions.
@@ -155,11 +192,15 @@ are not logged by this integration; response caches use hashed request keys.
   well as ordinary online catalog discovery.
 - Missing keys disable their respective integration. They are never sent to
   React; `/status` returns booleans and a safe message only.
-- `429` means an app allowance, concurrent request or provider quota was hit.
+- HTTP `429` means an app allowance or concurrent request limit was hit.
   Wait as instructed; repeatedly clicking does not bypass the limit.
-- `503` means disabled/unavailable AI, a provider failure, or a response that
-  could not be verified. Regular search remains available. Provider errors
-  are sanitized and no other paid provider is tried.
+- HTTP `503` means AI is disabled. A failed provider call can instead return
+  an empty recommendation response with an explicit provider outcome and safe
+  error message. It is not described as a successful search with no matches.
+- A Google rejection reports API/key restrictions separately from recognised
+  quota errors. Its short cooldown avoids repeatedly spending requests on a
+  rejected configuration. Correct the settings privately in Google/Render.
+  Provider keys, URLs and raw error bodies never appear in diagnostics.
 - Google's API key should allow only **Books API**. These calls originate in
   Java, so browser website-referrer restrictions do not apply to them.
 

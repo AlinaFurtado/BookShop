@@ -368,6 +368,9 @@ h2 { letter-spacing: -.7px; font-size: 26px; line-height: 1.1; }
 .search-mode-picker button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; border: 1px solid #c8b9a2; border-radius: 7px; color: var(--muted); background: #fffaf0; font-size: 11px; font-weight: 700; }
 .search-mode-picker button[aria-pressed="true"] { color: #fffaf0; background: var(--purple); border-color: var(--purple); }
 .search-route-help { grid-column: 1 / -1; font-size: 11px; line-height: 1.7; color: var(--muted); margin: 0; }
+.search-route-help small { display: block; margin-top: 4px; font-size: 10px; }
+.search-draft-notice { margin: 19px 0; border: 1px dashed #b89ccc; border-radius: 9px; padding: 14px 16px; color: #655570; background: #faf5ff; font-size: 12px; line-height: 1.8; }
+.search-draft-notice strong { display: block; color: var(--ink); }
 .search-is-ai { border-color: #b79acb; }
 .main-ai-options { grid-column: 1 / -1; color: var(--muted); }
 .main-ai-options > label { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; cursor: pointer; }
@@ -403,6 +406,24 @@ h2 { letter-spacing: -.7px; font-size: 26px; line-height: 1.1; }
 .ai-results-stamp { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--purple); color: var(--purple); padding: 9px 10px; border-radius: 6px; transform: rotate(3deg); font-size: 10px; white-space: nowrap; background: #fffaf0; }
 .ai-result-message { color: #655570; font-size: 12px; line-height: 1.8; margin: 14px 0; }
 .ai-result-sources { display: flex; flex-wrap: wrap; gap: 5px 14px; margin: 0 0 18px; color: var(--muted); font-size: 9px; line-height: 1.7; }
+.ai-cache-note { padding: 12px 14px; margin: 14px 0; border: 1px solid #cdb8de; border-radius: 8px; color: #655570; background: #fffaf0; font-size: 11px; line-height: 1.8; }
+.ai-reference-book { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 10px; margin-bottom: 13px; font-size: 11px; color: var(--muted); }
+.ai-reference-book .text-button { text-align: left; line-height: 1.7; }
+.ai-refresh-picks { display: flex; flex-wrap: wrap; gap: 12px 17px; align-items: center; margin-top: 23px; }
+.ai-refresh-picks > p { flex: 1; min-width: 190px; max-width: 550px; font-size: 10px; line-height: 1.8; color: var(--muted); margin: 0; }
+.provider-diagnostics { margin: 17px 0 21px; }
+.provider-diagnostics h3 { margin: 0 0 8px; font: 700 11px/1.6 var(--font-body, sans-serif); color: var(--muted); }
+.provider-diagnostics > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.provider-status { min-width: 0; border: 1px solid #d8ccbb; border-radius: 8px; background: #fffaf0; padding: 11px 13px; color: var(--muted); }
+.provider-status > div { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 10px; justify-content: space-between; font-size: 11px; line-height: 1.6; }
+.provider-status strong { color: var(--ink); }
+.provider-status > div > span { font-size: 9px; font-weight: 700; }
+.provider-status p { font-size: 10px; line-height: 1.7; margin: 5px 0 0; overflow-wrap: anywhere; }
+.provider-status small { display: block; font-size: 9px; line-height: 1.7; margin-top: 4px; }
+.provider-ok { border-color: #a7b781; }
+.provider-ok > div > span { color: #536b31; }
+.provider-not_configured, .provider-quota_limited, .provider-unavailable { border-color: #d4a386; background: #fff2e7; }
+.provider-not_configured > div > span, .provider-quota_limited > div > span, .provider-unavailable > div > span { color: #8a4e2e; }
 .ai-empty-hint { padding: 18px; border: 1px dashed #bda5d1; border-radius: 8px; color: #756788; background: #fffaf0; font-size: 12px; line-height: 1.8; }
 .description-attribution { color: var(--muted); font-size: 9px; line-height: 1.8; margin-top: 9px; }
 .description-attribution > span { display: block; }
@@ -419,4 +440,7 @@ h2 { letter-spacing: -.7px; font-size: 26px; line-height: 1.1; }
   .ai-result-message { font-size: 11px; }
   .ai-results-stamp { font-size: 9px; }
   .ai-result-sources { font-size: 8px; }
+  .provider-diagnostics > div { grid-template-columns: 1fr; }
+  .ai-refresh-picks > p { flex-basis: 100%; }
+  .search-draft-notice { font-size: 11px; padding: 12px; }
 }

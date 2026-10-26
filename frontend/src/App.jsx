@@ -11,7 +11,7 @@ import PassportCollection from './components/PassportCollection'
 import PassportModal from './components/PassportModal'
 import TrendingSection from './components/TrendingSection'
 import { GENRES } from './bookData'
-import { looksLikeReadingRequest } from './searchIntent'
+import { looksLikeReadingRequest, resolveSearchMode } from './searchIntent'
 import './App.css'
 
 function Filters({ prefix, genre, minRating, onGenre, onRating, disabled }) {
@@ -23,6 +23,44 @@ function browsePath(filters, page = 1, cursor = null) {
   query.set('page', page)
   if (cursor) query.set('cursor', cursor)
   return `/api/books/browse?${query}`
+}
+
+const PROVIDER_STATES = {
+  ok: 'Connected', empty: 'No matches', not_configured: 'Not configured',
+  quota_limited: 'Allowance reached', unavailable: 'Unavailable',
+  filtered: 'No eligible matches', skipped: 'Not used',
+}
+
+function ProviderDiagnostics({ providers }) {
+  // A reference lookup and candidate search can report the same provider.
+  // The last outcome describes its latest attempt, without duplicate labels.
+  const known = Array.isArray(providers) ? providers.filter((item) => ['Google Books', 'Open Library', 'Groq'].includes(item?.provider)) : []
+  const rows = [...new Map(known.map((item) => [item.provider, item])).values()]
+  if (!rows.length) return null
+  return <section className="provider-diagnostics" aria-label="Search connections"><h3>Search connections</h3><div>{rows.map((item) => <article key={item.provider} className={`provider-status provider-${Object.hasOwn(PROVIDER_STATES, item.state) ? item.state : 'unavailable'}`}><div><strong>{item.provider === 'Groq' ? 'Groq · AI matching' : item.provider}</strong><span>{PROVIDER_STATES[item.state] || 'Unavailable'}</span></div>{typeof item.message === 'string' && <p>{item.message}</p>}{Number.isInteger(item.received) && Number.isInteger(item.accepted) && <small>{item.received} {item.provider === 'Groq' ? 'candidates' : 'found'} · {item.accepted} {item.provider === 'Groq' ? 'picks' : 'eligible'}</small>}</article>)}</div></section>
+}
+
+function catalogSourceLabel(source) {
+  return source === 'googlebooks' ? 'Google Books' : source === 'curated' ? 'Offline collection' : 'Open Library'
+}
+
+function publicationLabel(meta) {
+  if (!meta.minPublicationYear) return 'Matching titles from every era'
+  const years = `${meta.minPublicationYear}–${meta.maxPublicationYear}`
+  return meta.publicationBasis === 'edition' ? `English editions · Edition published ${years}` : `English editions · First published ${years}`
+}
+
+function distinctCatalogBooks(books) {
+  const normalize = (value) => (value || '').normalize('NFKD').replace(/\p{M}+/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+  const seen = new Set()
+  return books.filter((book) => {
+    const title = normalize(book.title)
+    const author = normalize(book.author)
+    const identity = title && author && !['unknown', 'unknown author'].includes(author) ? `book:${title}\n${author}` : `id:${book.id}`
+    if (seen.has(identity)) return false
+    seen.add(identity)
+    return true
+  })
 }
 
 function App() {
@@ -41,7 +79,7 @@ function App() {
   const [minRating, setMinRating] = useState('')
   const [loadingKind, setLoadingKind] = useState('featured')
   const [resultError, setResultError] = useState('')
-  const [resultMeta, setResultMeta] = useState({ title: 'Fresh chapters for your shelf', subtitle: 'English editions of books first published in the last five years. Search a title or author to explore older books.', mode: 'featured' })
+  const [resultMeta, setResultMeta] = useState({ title: 'Fresh chapters for your shelf', subtitle: 'Recent English editions. Search a title or author to explore older books.', mode: 'featured' })
   const [pageMeta, setPageMeta] = useState({ page: 1, total: 0, hasMore: false, source: '', message: '' })
   const [selectedBook, setSelectedBook] = useState(null)
   const [authMode, setAuthMode] = useState(null)
@@ -67,8 +105,12 @@ function App() {
   const toastTimer = useRef(null)
   const sessionGeneration = useRef(0)
   const successfulQuery = useRef(null)
+  const aiPickHistory = useRef({ key: '', ids: [] })
   const readingRequestDetected = looksLikeReadingRequest(title)
-  const searchMode = searchOverride || (readingRequestDetected ? 'ai' : 'catalog')
+  const activeOverride = searchOverride?.draft === title ? searchOverride.mode : null
+  const searchMode = resolveSearchMode(title, searchOverride)
+  const aiDraftChanged = !!aiSubmitted && (title.trim() !== aiSubmitted.prompt || genre !== aiSubmitted.genre || minRating !== aiSubmitted.minRating || searchIncludeOlder !== aiSubmitted.includeOlder)
+  const catalogDraftChanged = successfulQuery.current ? title.trim() !== successfulQuery.current.title || genre !== successfulQuery.current.genre || minRating !== successfulQuery.current.minRating : resultRequest.current.sequence > 0
 
   // Independent startup reads. A guest can browse; only signed-in readers
   // have a personal shelf. Abort on unmount (also safe in React StrictMode).
@@ -96,6 +138,11 @@ function App() {
         if (alive && resultRequest.current.sequence === 0) {
           setBooks(catalog.books)
           setPageMeta(catalog)
+          const dateBasis = catalog.publicationBasis === 'edition' ? 'Editions published' : 'First published'
+          const subtitle = catalog.minPublicationYear
+            ? `English editions. ${dateBasis} ${catalog.minPublicationYear}–${catalog.maxPublicationYear}.${catalog.publicationBasis === 'edition' ? ' Original publication dates may differ.' : ''} Search a title or author to include older books.`
+            : 'English editions from the available catalog. Search a title or author, or choose a genre.'
+          setResultMeta({ title: 'Fresh chapters for your shelf', subtitle, mode: 'featured' })
           successfulQuery.current = { title: '', genre: '', minRating: '' }
         }
       } catch (error) { if (alive && resultRequest.current.sequence === 0) setResultError(error.message) }
@@ -184,6 +231,7 @@ function App() {
       aiRequest.current.sequence += 1; aiRequest.current.controller?.abort(); aiRequest.current.running = false
       setAiLoading(false); setAiResult(null); setAiError(''); setAiFeedback('')
       setAiSubmitted(null); setTitle(''); setSearchOverride(null); setSearchIncludeOlder(false)
+      aiPickHistory.current = { key: '', ids: [] }
       setPipResetKey((current) => current + 1)
       setLibraryOpen(false)
       setPassportId(null)
@@ -275,18 +323,20 @@ function App() {
       const response = await api(browsePath(selectedFilters, append ? pageMeta.page + 1 : 1, append ? pageMeta.nextCursor : null), { signal: controller.signal, timeout: 35000 })
       if (append && response.source !== pageMeta.source) throw new Error('The catalog connection changed while loading more. Run your search again to browse a fresh set of results.')
       const nextBooks = surprise && response.books.length ? [response.books[Math.floor(Math.random() * response.books.length)]] : response.books
-      const publicationLabel = response.minPublicationYear ? `${response.minPublicationYear}–${response.maxPublicationYear}` : ''
+      const publicationYears = response.minPublicationYear ? `${response.minPublicationYear}–${response.maxPublicationYear}` : ''
+      const dateBasis = response.publicationBasis === 'edition' ? 'edition published' : 'first published'
       const metadata = surprise
-        ? { title: 'A wild book appears!', subtitle: `A recent pick, first published ${publicationLabel}. Children’s books stay in Kids.`, mode: 'surprise' }
+        ? { title: 'A wild book appears!', subtitle: `A recent pick, ${dateBasis} ${publicationYears}. Children’s books stay in Kids.`, mode: 'surprise' }
         : queryTitle.trim()
           ? { title: `The search for “${queryTitle.trim()}”`, subtitle: 'Matching titles from every publication year, with your choice of genre and reader rating.', mode: 'search' }
-          : { title: selectedFilters.genre === 'Kids' ? 'Little readers. Big adventures.' : selectedFilters.genre ? `A little ${selectedFilters.genre.toLowerCase()} for your shelf` : selectedFilters.minRating ? 'Well-loved recent books, waiting for you' : 'Fresh chapters for your shelf', subtitle: `English editions. First published ${publicationLabel}. Search a title or author to include older books.`, mode: 'featured' }
+          : { title: selectedFilters.genre === 'Kids' ? 'Little readers. Big adventures.' : selectedFilters.genre ? `A little ${selectedFilters.genre.toLowerCase()} for your shelf` : selectedFilters.minRating ? 'Well-loved recent books, waiting for you' : 'Fresh chapters for your shelf', subtitle: `English editions, ${dateBasis} ${publicationYears}. Search a title or author to include older books.`, mode: 'featured' }
       if (sequence !== resultRequest.current.sequence) return
       setPageMeta({ ...response, total: surprise ? nextBooks.length : response.total, hasMore: !surprise && response.hasMore })
       successfulQuery.current = selectedFilters
       if (append) {
-        // Open Library pages can overlap. Work ids prevent duplicate cards.
-        setBooks((current) => [...new Map([...current, ...nextBooks].map((book) => [book.id, book])).values()])
+        // Providers can return several edition ids for one book. Keep the
+        // first displayed record and its position when later pages overlap.
+        setBooks((current) => distinctCatalogBooks([...current, ...nextBooks]))
       } else {
         setBooks(nextBooks || [])
         setResultMeta(metadata)
@@ -309,10 +359,15 @@ function App() {
     })
   }
 
-  async function recommendBooks({ prompt, includeOlder }) {
+  async function recommendBooks({ prompt, includeOlder, filters = null, refresh = false, excludeIds = [] }) {
     if (aiRequest.current.running) return
-    setSearchOverride('ai')
-    setTitle(prompt); setSearchIncludeOlder(!!includeOlder)
+    prompt = prompt.trim()
+    const selectedGenre = filters?.genre ?? genre
+    const selectedRating = filters?.minRating ?? minRating
+    const submitted = { prompt, genre: selectedGenre, minRating: selectedRating, includeOlder: !!includeOlder }
+    const requestKey = JSON.stringify(submitted)
+    setSearchOverride({ mode: 'ai', draft: prompt })
+    setTitle(prompt); setSearchIncludeOlder(!!includeOlder); setGenre(selectedGenre); setMinRating(selectedRating)
     resultRequest.current.sequence += 1; resultRequest.current.controller?.abort(); setLoadingKind('')
     setAiError(''); setAiFeedback(''); setAiResult(null); setAiSubmitted(null)
     focusAiResults()
@@ -325,12 +380,14 @@ function App() {
     const generation = sessionGeneration.current
     aiRequest.current.controller = controller
     aiRequest.current.running = true
-    setAiSubmitted({ prompt, genre, minRating, includeOlder: !!includeOlder })
+    setAiSubmitted(submitted)
     setAiLoading(true); setAiError(''); setAiFeedback(''); setAiResult(null)
     focusAiResults()
     try {
-      const result = await api('/api/recommendations', { method: 'POST', signal: controller.signal, timeout: 55000, body: { prompt, genre, minRating: minRating ? Number(minRating) : null, includeOlder } })
+      const result = await api('/api/recommendations', { method: 'POST', signal: controller.signal, timeout: 75000, body: { prompt, genre: selectedGenre, minRating: selectedRating ? Number(selectedRating) : null, includeOlder: !!includeOlder, refresh: !!refresh, excludeIds: refresh ? excludeIds.slice(-12) : [] } })
       if (sequence !== aiRequest.current.sequence || generation !== sessionGeneration.current) return
+      const previousIds = aiPickHistory.current.key === requestKey ? aiPickHistory.current.ids : []
+      aiPickHistory.current = { key: requestKey, ids: [...new Set([...previousIds, ...result.books.map((book) => book.id)])].slice(-12) }
       setAiResult(result)
       focusAiResults()
     } catch (error) {
@@ -352,14 +409,29 @@ function App() {
   }
 
   function chooseSearchMode(mode) {
-    setSearchOverride(mode)
-    if (mode === 'ai') {
+    setSearchOverride(mode === 'auto' ? null : { mode, draft: title })
+    if (mode === 'ai' || (mode === 'auto' && readingRequestDetected)) {
       resultRequest.current.sequence += 1; resultRequest.current.controller?.abort(); setLoadingKind('')
     } else if (aiRequest.current.running) cancelRecommendations()
   }
 
+  function changeSearchDraft(nextTitle) {
+    setTitle(nextTitle); setSearchOverride(null); setResultError(''); setAiError(''); setAiFeedback('')
+    resultRequest.current.sequence += 1; resultRequest.current.controller?.abort(); setLoadingKind('')
+    if (aiRequest.current.running) {
+      aiRequest.current.sequence += 1; aiRequest.current.controller?.abort(); aiRequest.current.running = false
+      setAiLoading(false)
+      setAiFeedback('Your draft changed. Submit when ready. The previous request may still count toward the shared allowance.')
+    }
+  }
+
+  function findDifferentPicks() {
+    if (!aiSubmitted || !aiResult || aiDraftChanged || aiRequest.current.running) return
+    recommendBooks({ prompt: aiSubmitted.prompt, includeOlder: aiSubmitted.includeOlder, filters: { genre: aiSubmitted.genre, minRating: aiSubmitted.minRating }, refresh: true, excludeIds: aiPickHistory.current.ids })
+  }
+
   function updateDiscoveryFilters(nextGenre, nextRating) {
-    setGenre(nextGenre); setMinRating(nextRating)
+    setGenre(nextGenre); setMinRating(nextRating); setAiError(''); setAiFeedback('')
     // Changing AI filters never sends a model request or the draft as a title.
     // Catalog filters apply to the last submitted query, not unsubmitted text.
     if (searchMode === 'ai') return
@@ -410,30 +482,45 @@ function App() {
             else loadResults(title.trim() ? 'search' : 'featured')
           }}>
             <div className="search-mode-picker" role="group" aria-label="Search type">
-              <button type="button" aria-pressed={searchMode === 'catalog'} onClick={() => chooseSearchMode('catalog')}><Icon name="search" size={15} />Title or author</button>
-              <button type="button" aria-pressed={searchMode === 'ai'} onClick={() => chooseSearchMode('ai')}><Icon name="spark" size={15} />Describe a book · AI</button>
+              <button type="button" aria-pressed={!activeOverride} onClick={() => chooseSearchMode('auto')}><Icon name="spark" size={15} />Auto</button>
+              <button type="button" aria-pressed={activeOverride === 'catalog'} onClick={() => chooseSearchMode('catalog')}><Icon name="search" size={15} />Title or author</button>
+              <button type="button" aria-pressed={activeOverride === 'ai'} onClick={() => chooseSearchMode('ai')}><Icon name="spark" size={15} />Describe a book · AI</button>
             </div>
-            <label className="search-field" htmlFor="book-search"><Icon name={searchMode === 'ai' ? 'spark' : 'search'} size={19} /><span className="sr-only">{searchMode === 'ai' ? 'Describe the book you want to read' : 'Search by book title or author'}</span><input id="book-search" type="search" value={title} disabled={aiLoading} onChange={(event) => { setTitle(event.target.value); if (!event.target.value.trim()) setSearchOverride(null) }} maxLength={600} minLength={searchMode === 'ai' ? 10 : undefined} required={searchMode === 'ai'} placeholder={searchMode === 'ai' ? 'I need a fantasy book with dragons…' : 'Search a title or author, or describe your next read…'} aria-describedby="search-route-help" /></label>
+            <label className="search-field" htmlFor="book-search"><Icon name={searchMode === 'ai' ? 'spark' : 'search'} size={19} /><span className="sr-only">{searchMode === 'ai' ? 'Describe the book you want to read' : 'Search by book title or author'}</span><input id="book-search" type="search" value={title} onChange={(event) => changeSearchDraft(event.target.value)} maxLength={600} minLength={searchMode === 'ai' ? 10 : undefined} required={searchMode === 'ai'} placeholder="A title, an author, or a book like Fourth Wing…" aria-describedby="search-route-help" /></label>
             <button className={`button ${searchMode === 'ai' ? 'button-purple' : 'button-coral'} search-submit`} disabled={searchMode === 'ai' ? aiLoading || sessionLoading || aiStatusLoading : !!loadingKind} type="submit">{searchMode === 'ai' ? aiLoading ? <><span className="spinner" />Asking Pip…</> : <>{user ? 'Ask Pip' : 'Sign in to ask Pip'}<Icon name="spark" size={16} /></> : <>Find a book<Icon name="arrow" size={17} /></>}</button>
-            <p id="search-route-help" className="search-route-help" role="status">{searchMode === 'ai' ? <>{!searchOverride && readingRequestDetected ? 'Reading request detected. ' : ''}<strong>AI recommendations</strong> match your description to real catalog books. {aiStatusLoading ? 'Checking availability…' : !aiStatus?.available ? aiStatus?.message || 'AI is unavailable right now.' : !user ? 'Sign in, then submit this request.' : 'Ready when you press Ask Pip.'}</> : <>Searches book titles and authors. For a reading mood or a request, choose <strong>Describe a book · AI</strong>.</>}</p>
+            <p id="search-route-help" className="search-route-help" role="status"><strong>{activeOverride ? 'Selected: ' : 'Auto: '}{searchMode === 'ai' ? 'AI recommendations' : 'Title or author search'}.</strong> {searchMode === 'ai' ? <>We will match your description to real catalog books. {aiStatusLoading ? 'Checking availability…' : !aiStatus?.available ? aiStatus?.message || 'AI is unavailable right now.' : !user ? 'Sign in, then submit this request.' : 'Ready when you press Ask Pip.'}</> : <>For example, “Fourth Wing” searches that title; “a book like Fourth Wing” asks for recommendations.</>}<small>A manual mode applies to the current text. Editing returns to Auto.</small></p>
             <div className="catalog-filters"><Filters prefix="catalog" genre={genre} minRating={minRating} onGenre={(next) => updateDiscoveryFilters(next, minRating)} onRating={(next) => updateDiscoveryFilters(genre, next)} disabled={searchMode === 'ai' ? aiLoading : !!loadingKind} /><button className="text-button reset-filters" type="button" onClick={() => updateDiscoveryFilters('', '')} disabled={!genre && !minRating}>Reset</button></div>
             {searchMode === 'ai' && <div className="main-ai-options"><label><input type="checkbox" checked={searchIncludeOlder} disabled={aiLoading} onChange={(event) => setSearchIncludeOlder(event.target.checked)} />Include older books, too</label><p>Your request is sent to our hosted AI service only when you submit. Filters apply to that request. Your private shelf and passport notes stay private.</p></div>}
           </form>
         {searchMode === 'ai' && <section className="panel ai-results-panel" ref={aiResultsRef} tabIndex={-1} aria-labelledby="ai-results-title" aria-busy={aiLoading}>
-          <div className="discover-heading"><div><span className="eyebrow">PIP’S VERY PARTICULAR PICKS</span><h2 id="ai-results-title">Your next plot twist<span className="purple"> ✦</span></h2><p className="results-subtitle">Real catalog books, matched to your description. A suggestion, never a reading assignment.</p></div><span className="ai-results-stamp"><Icon name="spark" size={17} />{aiResult ? 'Picked with AI' : 'AI recommendations'}</span></div>
-          {aiSubmitted && (aiResult || aiLoading) && <p className="ai-submitted-request"><strong>Reading request:</strong> “{aiSubmitted.prompt}”<small>{aiSubmitted.genre || 'Any genre'} · {aiSubmitted.minRating ? `${aiSubmitted.minRating}+ stars` : 'Any rating'} · {aiSubmitted.includeOlder ? 'Older books included' : 'Last five years'}</small></p>}
-          {!aiLoading && !aiResult && !aiError && !aiFeedback && <p className="ai-empty-hint">Describe what you would enjoy, then press Ask Pip. For example: “I need a fantasy book with dragons.”</p>}
+          <div className="discover-heading"><div><span className="eyebrow">PIP’S VERY PARTICULAR PICKS</span><h2 id="ai-results-title">Your next plot twist<span className="purple"> ✦</span></h2><p className="results-subtitle">Real catalog books, matched to your description. A suggestion, never a reading assignment.</p></div><span className="ai-results-stamp"><Icon name="spark" size={17} />{aiResult?.books.length > 0 && !aiDraftChanged ? 'Picked with AI' : 'AI recommendations'}</span></div>
+          {aiDraftChanged && <p className="search-draft-notice" role="status"><strong>New request, not submitted yet.</strong> Press Ask Pip to search with this description and these filters. Previous picks are hidden so they are not mistaken for matches to your new request.</p>}
+          {aiSubmitted && !aiDraftChanged && (aiResult || aiLoading) && <p className="ai-submitted-request"><strong>Reading request:</strong> “{aiSubmitted.prompt}”<small>{aiSubmitted.genre || 'Any genre'} · {aiSubmitted.minRating ? `${aiSubmitted.minRating}+ stars` : 'Any rating'} · {aiSubmitted.includeOlder ? 'Older books included' : 'Last five years'}</small></p>}
+          {!aiLoading && !aiSubmitted && !aiError && !aiFeedback && <p className="ai-empty-hint">Describe what you would enjoy, then press Ask Pip. For example: “a book like Fourth Wing.”</p>}
           {aiLoading && <div className="results-loading" role="status"><span className="spinner" /><div><strong>Interpreting your mood. Checking real books.</strong><p>This can take a little while. Pip is a goblin, not a speed-reader.</p></div><button className="text-button" onClick={cancelRecommendations}>Cancel</button></div>}
           {aiError && <p className="inline-error" role="alert">{aiError} Choose Title or author above for regular catalog search.</p>}
           {aiFeedback && <p className="ai-result-message" role="status">{aiFeedback}</p>}
-          {aiResult && <><p className="ai-result-message" role="status">{aiResult.message || `${aiResult.books.length} ${aiResult.books.length === 1 ? 'book' : 'books'} for your next chapter.`}</p><div className="ai-result-sources"><span>{aiResult.minPublicationYear ? `First published ${aiResult.minPublicationYear}–${aiResult.maxPublicationYear}` : 'Older books included'} · English editions</span>{aiResult.sources?.length > 0 && <span>Book data: {aiResult.sources.join(' · ')}</span>}{aiResult.cached && <span>Reusing a recent match to save the shared allowance.</span>}</div><div className="book-cards">{aiResult.books.map((book) => <BookCard key={book.id} book={book} entry={shelf.find((entry) => entry.workId === book.id)} busy={pendingKey === `add:${book.id}`} locked={!!pendingKey || sessionLoading} onOpen={setSelectedBook} onAdd={addBook} onStatus={updateStatus} />)}</div>{!aiResult.books.length && <p className="ai-empty-hint">Try fewer requirements, a broader genre, or the “Include older books” option. We won’t invent a match.</p>}<p className="catalog-note">AI explanations are based on available catalog information and can be imperfect. Ratings belong to the source named in each book’s details. Google Books edition dates may differ from a work’s original publication year.</p></>}
+          {aiResult && !aiDraftChanged && <>
+            <p className="ai-result-message" role="status">{aiResult.message || `${aiResult.books.length} ${aiResult.books.length === 1 ? 'book' : 'books'} for your next chapter.`}</p>
+            {aiResult.referenceBook && <div className="ai-reference-book"><span>Inspired by your reference book</span><button className="text-button" onClick={() => setSelectedBook(aiResult.referenceBook)}>{aiResult.referenceBook.title}{aiResult.referenceBook.author ? ` — ${aiResult.referenceBook.author}` : ''}</button></div>}
+            <div className="ai-result-sources"><span>{aiResult.minPublicationYear ? `Publication window ${aiResult.minPublicationYear}–${aiResult.maxPublicationYear}` : 'Older books included'} · English editions</span>{aiResult.sources?.length > 0 && <span>Book data: {aiResult.sources.join(' · ')}</span>}</div>
+            {aiResult.cached && <p className="ai-cache-note" role="status">This is the saved result for the same request and filters. Reusing it saves the shared allowance. Choose “Find different picks” for a fresh search; changing your description creates a new search.</p>}
+            <ProviderDiagnostics providers={aiResult.providers} />
+            <div className="book-cards">{aiResult.books.map((book) => <BookCard key={book.id} book={book} entry={shelf.find((entry) => entry.workId === book.id)} busy={pendingKey === `add:${book.id}`} locked={!!pendingKey || sessionLoading} onOpen={setSelectedBook} onAdd={addBook} onStatus={updateStatus} />)}</div>
+            {!aiResult.books.length && <p className="ai-empty-hint">Try fewer requirements, a broader genre, or the “Include older books” option. We won’t invent a match.</p>}
+            <div className="ai-refresh-picks"><button className="button button-purple" type="button" onClick={findDifferentPicks} disabled={aiLoading || !user || !aiStatus?.available}><Icon name="spark" size={16} />Find different picks</button><p>Searches again with this exact request and filters, excluding up to 12 recently shown books. This uses the shared allowance. Another match is not guaranteed.</p></div>
+            <p className="catalog-note">AI explanations use available catalog information and can be imperfect. Google Books dates describe editions and may differ from original publication dates. Ratings belong to the source named in each book’s details.</p>
+          </>}
         </section>}
 
           {searchMode === 'catalog' && <>
-          {pageMeta.source && <div className={`catalog-source ${pageMeta.source === 'curated' ? 'is-offline' : ''}`} role="status"><strong>{pageMeta.source === 'curated' ? 'Offline collection — live connection unavailable' : 'Live Open Library catalog'}</strong>{pageMeta.message && <span>{pageMeta.message}</span>}{pageMeta.source === 'curated' && <button className="text-button" disabled={!!loadingKind} onClick={() => loadResults('featured', { filters: successfulQuery.current || { title: title.trim(), genre, minRating } })}>Retry Open Library <Icon name="arrow" size={14} /></button>}</div>}
-          <div className="results-toolbar"><span className="results-label"><Icon name="leaf" size={14} />{pageMeta.minPublicationYear ? `English editions · First published ${pageMeta.minPublicationYear}–${pageMeta.maxPublicationYear}` : 'Matching titles from every era'}</span><span>{!loadingKind && loadedCountLabel}</span></div>
           {loadingKind && loadingKind !== 'more' && <div className="results-loading" role="status"><span className="spinner" /><div><strong>Looking through the stacks…</strong><p>Fetching real books and reader ratings.</p></div><button className="text-button" onClick={cancelResults}>Cancel</button></div>}
-          {resultError && <div className="inline-error results-error" role="alert"><Icon name="close" size={17} /><span>{resultError}</span><button className="text-button" onClick={() => loadResults('featured')}>Try browsing picks</button></div>}
+          {resultError && <div className="inline-error results-error" role="alert"><Icon name="close" size={17} /><span>{resultError}</span><button className="text-button" onClick={() => { setTitle(''); setSearchOverride(null); loadResults('featured') }}>Try browsing picks</button></div>}
+          {catalogDraftChanged && !loadingKind && <p className="search-draft-notice" role="status"><strong>{title.trim() ? 'New search, not submitted yet.' : 'Ready to browse.'}</strong> Press Find a book to use this text and these filters. Previous results are hidden.</p>}
+          {!catalogDraftChanged && <>
+          {pageMeta.source && <div className={`catalog-source ${pageMeta.source === 'curated' ? 'is-offline' : ''}`} role="status"><strong>{pageMeta.source === 'curated' ? 'Offline collection — live connection unavailable' : `Live ${catalogSourceLabel(pageMeta.source)} catalog`}</strong>{pageMeta.message && <span>{pageMeta.message}</span>}{pageMeta.source === 'curated' && <button className="text-button" disabled={!!loadingKind} onClick={() => loadResults('featured', { filters: successfulQuery.current || { title: title.trim(), genre, minRating } })}>Retry live catalogs <Icon name="arrow" size={14} /></button>}</div>}
+          <ProviderDiagnostics providers={pageMeta.providers} />
+          <div className="results-toolbar"><span className="results-label"><Icon name="leaf" size={14} />{publicationLabel(pageMeta)}</span><span>{!loadingKind && loadedCountLabel}</span></div>
           <div className={`book-cards ${loadingKind && loadingKind !== 'more' ? 'results-dimmed' : ''}`} aria-busy={!!loadingKind}>{books.map((book) => <BookCard key={book.id} book={book} entry={shelf.find((entry) => entry.workId === book.id)} busy={pendingKey === `add:${book.id}`} locked={!!pendingKey || sessionLoading} onOpen={setSelectedBook} onAdd={addBook} onStatus={updateStatus} />)}</div>
           {!loadingKind && !books.length && !resultError && <div className="no-results"><Icon name="book" size={38} /><h3>{pageMeta.hasMore ? "No matches on this page." : "A little too specific for these shelves."}</h3><p>{pageMeta.hasMore ? "Load more to keep looking for matching books." : pageMeta.minPublicationYear ? `No recent matches in ${pageMeta.minPublicationYear}–${pageMeta.maxPublicationYear}. Try another genre or rating, or search a title or author to find older books.` : "Try a shorter title, a broader genre, or a lower rating. Books without a reader rating are excluded when a minimum is selected."}</p><button className="button" onClick={() => { setTitle(''); setGenre(''); setMinRating(''); loadResults('featured', { filters: { genre: '', minRating: '' } }) }}>Clear the filters</button></div>}
           <div className="catalog-pagination" aria-live="polite">
@@ -442,7 +529,8 @@ function App() {
             {pageMeta.hasMore && <button className="button button-purple" disabled={!!loadingKind} onClick={() => loadResults('more', { append: true })}>{loadingKind === 'more' ? <><span className="spinner" />Loading more books...</> : <>Load 11 more books<Icon name="arrow" size={16} /></>}</button>}
             {loadingKind === 'more' && <button className="text-button" onClick={cancelResults}>Cancel</button>}
           </div>
-          <p className="catalog-note">Children’s books have their own home: choose Kids in Genre. Surprise Me skips them. Audience labels depend on Open Library’s cataloging.<br />Books, covers & reader ratings from Open Library. Missing cover? We dressed it up. Ratings are never made up.</p>
+          <p className="catalog-note">Children’s books have their own home: choose Kids in Genre. Surprise Me skips them. Audience labels depend on catalog information.<br />Book data, covers & reader ratings come from Google Books and Open Library when available. Google Books dates describe editions, which can be newer than the original work. Ratings are never made up.</p>
+          </>}
           </>}
         </section>
       </main>

@@ -29,3 +29,32 @@ Use disposable local test accounts while checking behavior; no email is sent.
 9. Confirm the book detail dialog has a compact Amazon button and no Explore on Open Library link. The rating's source attribution should still be visible.
 
 The automated Java tests cover server behaviors separately from this visual checklist. There is no AI free-text feature or local model in this build.
+# Retrieval correction: check after the new Render deployment
+
+Use the public HTTPS site, sign in, and perform these checks:
+
+1. In **Auto**, enter `Fourth Wing`. It should choose **Title or author** and
+   ordinary discovery should report **Google Books** when its request succeeds.
+   Check **Search connections** for the real provider outcome, not just the
+   configured booleans from `/api/recommendations/status`.
+2. Replace the draft with `a book like Fourth Wing`. Auto must choose AI. Submit
+   it once. A resolved reference should show the book and author; returned picks
+   should not be Fourth Wing itself or a summary/workbook/study guide.
+3. Check the provider cards. `Unavailable`, `Not configured` and `Quota reached`
+   are problems to investigate, not evidence that no suitable books exist.
+   Keep keys and raw server/provider error bodies private.
+4. Click **Find different picks**. It must explicitly search again, keep the
+   submitted filters and exclude recent displayed IDs. More matches depend on
+   available source records and the shared free allowance.
+5. Enter a different request, such as `I want a cosy mystery without horror`.
+   Earlier cards should disappear while the draft is unsent, and the new result
+   must show this request. Genre/rating changes alone must not submit an AI call.
+6. Browse Fantasy or Mystery with an empty title. The default range stays the
+   last five calendar years. Google years say **Edition published**; original
+   years can differ. An explicit title search may return an older book.
+7. Load more ordinary results. Eleven-book batches retain provider overflow and
+   merge duplicate title/author editions. Save a Google book, mark it Read, open
+   its passport and refresh to check persistence.
+
+These live checks are pending until the user uploads and deploys the update.
+

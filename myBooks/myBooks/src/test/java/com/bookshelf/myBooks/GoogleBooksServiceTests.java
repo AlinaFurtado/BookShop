@@ -33,6 +33,7 @@ class GoogleBooksServiceTests {
     private GoogleBooksService service;
     private volatile int status = 200;
     private volatile Object body;
+    private volatile java.util.function.Function<Map<String, String>, Object> bodyForQuery;
     private volatile String accept;
     private volatile String userAgent;
 
@@ -66,7 +67,8 @@ class GoogleBooksServiceTests {
         assertEquals("cozy magic subject romance subject:\"fantasy\"", query.get("q"));
         assertEquals("books", query.get("printType"));
         assertEquals("en", query.get("langRestrict"));
-        assertEquals("8", query.get("maxResults"));
+        assertEquals("20", query.get("maxResults"));
+        assertEquals("0", query.get("startIndex"));
         assertEquals("relevance", query.get("orderBy"));
         assertEquals(TEST_KEY, query.get("key"));
         assertFalse(query.containsKey("private"), "The key is encoded as one query value");
@@ -245,6 +247,116 @@ class GoogleBooksServiceTests {
         assertEquals(attempts + 1, requests.size(), "An outage is not cached as an empty catalog");
     }
 
+    @Test
+    void outcomesDistinguishConfiguredEmptyFilteredSuccessfulAndUnavailable() {
+        var disabled = client(true, true, "", 600, 20).searchResult("dragons", "Fantasy", false);
+        assertEquals("not_configured", disabled.outcome().state());
+        assertTrue(requests.isEmpty());
+
+        var success = service.searchResult("dragons", "Fantasy", false);
+        assertEquals("ok", success.outcome().state());
+        assertEquals("Google Books", success.outcome().provider());
+        assertEquals(1, success.outcome().received());
+        assertEquals(1, success.outcome().accepted());
+        body = Map.of("totalItems", 0);
+        assertEquals("empty", service.searchResult("nothing", "Fantasy", false).outcome().state());
+        body = searchBody(volume("old", "An Old Edition", "Jane Reader", "Fiction / Fantasy", "", "en", "1978"));
+        var filtered = service.searchResult("old", "Fantasy", false);
+        assertEquals("filtered", filtered.outcome().state());
+        assertEquals(1, filtered.outcome().received());
+        assertEquals(0, filtered.outcome().accepted());
+        status = 503;
+        body = Map.of("error", TEST_KEY);
+        var failed = service.searchResult("outage", "Fantasy", false);
+        assertEquals("unavailable", failed.outcome().state());
+        assertFalse(failed.toString().contains(TEST_KEY));
+        assertFalse(failed.toString().contains("127.0.0.1"));
+    }
+
+    @Test
+    void quotaAndAuthorizationFailuresHaveSafeDistinctOutcomesAndNoFalseConnectionClaim() {
+        status = 403;
+        body = Map.of("error", Map.of("message", TEST_KEY, "errors", List.of(Map.of("reason", "dailyLimitExceeded"))));
+        var limited = service.searchResult("dragons", "Fantasy", false);
+        assertEquals("quota_limited", limited.outcome().state());
+        int attempts = requests.size();
+        assertEquals("quota_limited", service.searchResult("other", "Fantasy", false).outcome().state());
+        assertEquals(attempts, requests.size());
+        assertTrue(service.available(), "Configured does not mean this request connected successfully");
+        assertFalse(limited.toString().contains(TEST_KEY));
+
+        service = client(true, true, TEST_KEY, 600, 20);
+        body = Map.of("error", Map.of("message", TEST_KEY, "errors", List.of(Map.of("reason", "accessNotConfigured"))));
+        var rejected = service.searchResult("dragons", "Fantasy", false);
+        assertEquals("unavailable", rejected.outcome().state());
+        assertTrue(rejected.outcome().message().contains("API restrictions"));
+        assertFalse(rejected.toString().contains(TEST_KEY));
+    }
+
+    @Test
+    void broadensOnlyEmptyQueriesAndNeverRetriesAProviderFailure() {
+        bodyForQuery = query -> query.get("q").startsWith("obscure") ? Map.of("totalItems", 0)
+                : searchBody(volume("dragon", "Dragon Voyage", "Jane Reader", "Fiction / Fantasy", "Dragon riders", "en", "2025"));
+        var result = service.searchQueries(List.of("obscure request", "dragon riders", "romance"), "Fantasy", false);
+        assertEquals(List.of("googlebooks:dragon"), result.books().stream().map(BookPreview::id).toList());
+        assertEquals(2, requests.size(), "One broader catalog query follows an empty result; no third request after success");
+        assertEquals("dragon riders subject:\"fantasy\"", parameters(requests.getLast()).get("q"));
+        status = 503;
+        var failed = service.searchQueries(List.of("different request", "second phrase", "third phrase"), "Fantasy", false);
+        assertEquals("unavailable", failed.outcome().state());
+        assertEquals(3, requests.size(), "Transport failure is not a reason to retry more queries");
+    }
+
+    @Test
+    void referenceLookupUsesExactRealTitleAndRejectsGuidesEvenWithMatchingTitles() {
+        body = searchBody(
+                volume("summary", "Fourth Wing Summary", "Other Writer", "Study Aids / Book Notes", "Not the actual novel", "en", "2025"),
+                volume("guide", "Fourth Wing", "Other Writer", "Study Aids", "A guide", "en", "2025"),
+                volume("journal", "Fourth Wing Reading Journal", "Other Writer", "Fiction", "Blank journal", "en", "2025"),
+                volume("novel", "Fourth Wing", "Rebecca Yarros", "Fiction / Fantasy", "Dragon riders at a war college.", "en", "2023"),
+                volume("wrong", "Fourth Wing Collection", "Rebecca Yarros", "Fiction / Fantasy", "Collection", "en", "2025"));
+        var reference = service.lookupReference("fourth wing");
+        assertEquals("ok", reference.outcome().state());
+        assertEquals(List.of("googlebooks:novel"), reference.books().stream().map(BookPreview::id).toList());
+        assertEquals("intitle:\"fourth wing\"", parameters(requests.getFirst()).get("q"));
+        assertEquals("Dragon riders at a war college.", reference.books().getFirst().description());
+        var recommendations = service.searchResult("fourth wing", "Fantasy", false);
+        assertEquals(List.of("googlebooks:novel", "googlebooks:wrong"), recommendations.books().stream().map(BookPreview::id).toList());
+    }
+
+    @Test
+    void catalogPagesSendOffsetsAndKeepEditionRatingAudienceAndBookTypePolicies() {
+        var rated = volume("rated", "A Recent Fantasy", "Jane Reader", "Fiction / Fantasy", "Source description", "en", "2025");
+        @SuppressWarnings("unchecked")
+        var info = (Map<String, Object>) rated.get("volumeInfo");
+        info.put("averageRating", 4.7);
+        info.put("ratingsCount", 5);
+        body = Map.of("totalItems", 65, "items", List.of(rated,
+                volume("old", "Old Fantasy", "Jane Reader", "Fiction / Fantasy", "", "en", "1978"),
+                volume("kids", "A Picture Story", "Jane Reader", "Juvenile Fiction", "", "en", "2025"),
+                volume("future", "Future Book", "Jane Reader", "Fiction / Fantasy", "", "en", "2035"),
+                volume("guide", "Fantasy Study Guide", "Jane Reader", "Study Aids", "", "en", "2025")));
+        var page = service.searchPage("", "Fantasy", 4.5, 2, false);
+        assertEquals(List.of("googlebooks:rated"), page.books().stream().map(BookPreview::id).toList());
+        assertEquals(65, page.total());
+        assertTrue(page.hasMore());
+        assertEquals(5, page.outcome().received());
+        assertEquals(1, page.outcome().accepted());
+        var query = parameters(requests.getFirst());
+        assertEquals("20", query.get("startIndex"));
+        assertEquals("subject:\"fantasy\"", query.get("q"));
+        assertEquals("relevance", query.get("orderBy"));
+        service.searchPage("", "", null, 1, false);
+        query = parameters(requests.getLast());
+        assertEquals("subject:fiction", query.get("q"));
+        assertEquals("newest", query.get("orderBy"));
+        service.searchPage("Rebecca Yarros", "", null, 1, true);
+        assertEquals("Rebecca Yarros", parameters(requests.getLast()).get("q"));
+        int attempts = requests.size();
+        assertEquals("filtered", service.searchPage("book", "", null, 0, true).outcome().state());
+        assertEquals(attempts, requests.size());
+    }
+
     private GoogleBooksService client(boolean online, boolean enabled, String key, int daily, int minute) {
         return new GoogleBooksService(mapper, online, enabled, key,
                 "http://127.0.0.1:" + server.getAddress().getPort() + "/books/v1", clock, daily, minute);
@@ -275,7 +387,8 @@ class GoogleBooksServiceTests {
         requests.add(exchange.getRequestURI().toString());
         accept = exchange.getRequestHeaders().getFirst("Accept");
         userAgent = exchange.getRequestHeaders().getFirst("User-Agent");
-        byte[] data = mapper.writeValueAsBytes(body);
+        Object currentBody = bodyForQuery == null ? body : bodyForQuery.apply(parameters(exchange.getRequestURI().toString()));
+        byte[] data = mapper.writeValueAsBytes(currentBody);
         exchange.getResponseHeaders().set("Content-Type", "application/json");
         exchange.sendResponseHeaders(status, data.length);
         try (var output = exchange.getResponseBody()) { output.write(data); }

@@ -1,6 +1,31 @@
 # Verification record
 
-## 27 October 2026: hosted AI and Google Books integration
+## 27 October 2026: retrieval and reference-book correction (current)
+
+- Focused backend gate passed **52 tests**, zero failures/errors/skips:
+  `BookDetailsTests` (4), `CatalogGoogleTests` (10), `GoogleBooksServiceTests`
+  (16), `GroqRecommendationTests` (10), `RecommendationCatalogTests` (7), and
+  `RecommendationServiceTests` (5).
+- Maven compiled the updated Java and test sources. Tests use local HTTP stubs
+  and provider mocks; the focused gate does not start or alter Neon or the saved
+  H2 database. The Windows sandbox could compile production classes but could
+  not resolve them during test compilation; the same focused gate passed outside
+  that sandbox with Java heap caps. This was not a full package/suite rerun.
+- Six frontend Node test groups passed, plus ESLint and the Vite production
+  build. Request routing includes “a book like Fourth Wing” and “books similar
+  to…”, explicit draft-scoped overrides and automatic mode reset.
+- Google Books is primary for ordinary discovery, with 11-result cursor pages,
+  visible per-request provider outcomes and accurately labelled edition years.
+  Known older originals, ancillary records and duplicate editions are filtered.
+- Similarity recommendations resolve a reference record, optionally derive
+  supported traits, and exclude the reference itself. Refresh bypasses the AI
+  result cache, excludes up to 12 recent IDs and still consumes the shared limit.
+- No real provider keys were read or used in these tests. Actual Google/Groq
+  connectivity, catalog coverage and recommendation quality still require the
+  deployed checks in `DEMO_CHECKLIST.md`. Passing stubs is not proof of the
+  external services accepting the deployed keys or returning useful records.
+
+## Earlier on 27 October 2026: initial hosted AI integration
 
 ### Main search routing correction
 

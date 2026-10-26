@@ -27,7 +27,8 @@ class GroqRecommendationTests {
 
     @BeforeEach
     void start() throws IOException {
-        answer = Map.of("genre", "Kids", "keywords", List.of("friendship", "magic"), "avoid", List.of("horror"));
+        answer = Map.of("genre", "Kids", "keywords", List.of("friendship", "magic"), "avoid", List.of("horror"),
+                "referenceTitle", "", "searchQueries", List.of("friendship", "magic"));
         status = 200;
         finishReason = "stop";
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -49,9 +50,57 @@ class GroqRecommendationTests {
         assertTrue(request.path("response_format").path("json_schema").path("strict").asBoolean());
         assertFalse(request.toString().contains("private-test-key"));
         assertFalse(request.has("tools"));
-        assertEquals(1200, request.path("max_completion_tokens").asInt());
+        assertEquals(1000, request.path("max_completion_tokens").asInt());
         assertEquals("low", request.path("reasoning_effort").asText());
         assertFalse(request.path("include_reasoning").asBoolean());
+    }
+
+    @Test
+    void referenceRequestsKeepTheTitleSeparateFromAlternativeTraitSearches() {
+        answer = Map.of("genre", "Fantasy", "referenceTitle", "Fourth Wing", "keywords", List.of("Fourth", "Wing", "dragons"),
+                "searchQueries", List.of("Fourth Wing", "dragon riders", "military academy"), "avoid", List.of("horror"));
+        var result = client.extract("Something like Fourth Wing with dragons, but no horror", "");
+        assertEquals("Fourth Wing", result.referenceTitle());
+        assertEquals(List.of("dragons"), result.keywords());
+        assertEquals(List.of("dragon riders", "military academy"), result.searchQueries());
+        assertFalse(result.searchQueries().stream().anyMatch(query -> query.contains("Fourth")));
+    }
+
+    @Test
+    void anInventedReferenceTitleIsNotAcceptedIfItWasNotInTheRequest() {
+        answer = Map.of("genre", "Fantasy", "referenceTitle", "An invented book", "keywords", List.of("magic"),
+                "searchQueries", List.of("magic"), "avoid", List.of());
+        assertEquals("", client.extract("I would like a magical adventure", "").referenceTitle());
+    }
+
+    @Test
+    void referenceRefinementUsesVerifiedMetadataAndCannotInventTraitsOrWarnings() {
+        answer = Map.of("genre", "Romance", "keywords", List.of("dragon riders", "military academy", "vampires"),
+                "searchQueries", List.of("dragon riders", "military academy", "vampires"), "avoid", List.of("invented warning"));
+        var original = new RecommendationPreferences("Fantasy", List.of(), List.of("horror"), "Fourth Wing", List.of());
+        var reference = new BookPreview("/works/OL1W", "Fourth Wing", "Rebecca Yarros", "Fantasy", null, null, null, 2023,
+                "Dragon riders train at a military academy.", "Open Library", List.of("dragons"), null);
+        var result = client.referencePreferences("Something like Fourth Wing, no horror", original, reference);
+        assertEquals("Fantasy", result.genre());
+        assertEquals("Fourth Wing", result.referenceTitle());
+        assertEquals(List.of("dragon riders", "military academy"), result.keywords());
+        assertEquals(List.of("dragon riders", "military academy"), result.searchQueries());
+        assertEquals(List.of("horror"), result.avoid());
+        String content = requests.getFirst().path("messages").get(1).path("content").asText();
+        assertTrue(content.contains("verifiedReference"));
+        assertTrue(content.contains("Dragon riders train"));
+        assertEquals(1000, requests.getFirst().path("max_completion_tokens").asInt());
+    }
+
+    @Test
+    void aReferenceWithoutTraitsFallsBackToItsGenreWithoutAnotherModelCall() {
+        var original = new RecommendationPreferences("", List.of("friendship"), List.of(), "A title", List.of());
+        var sparse = new BookPreview("/works/OL1W", "A title", "An author", "Fantasy", null, null, null, 2023,
+                "", "Open Library", List.of(), null);
+        var result = client.referencePreferences("Something like A title with friendship", original, sparse);
+        assertEquals("Fantasy", result.genre());
+        assertEquals(List.of("friendship"), result.keywords());
+        assertTrue(requests.isEmpty());
     }
 
     @Test
@@ -75,7 +124,7 @@ class GroqRecommendationTests {
         assertEquals(4, result.size());
         assertEquals(List.of("/works/OL1W", "/works/OL3W", "/works/OL4W", "/works/OL5W"), result.stream().map(BookPreview::id).toList());
         result.forEach(book -> {
-            assertTrue(book.reason().contains("Fantasy"));
+            assertTrue(book.reason().contains("Source description"), "Prefer actual descriptive evidence to a generic genre label");
             assertFalse(book.reason().contains("made-up plot"), "Do not expose generated unsupported plot claims");
         });
         assertEquals("Source description", result.getFirst().description(), "The model must not replace source metadata");

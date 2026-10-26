@@ -48,6 +48,10 @@ class RecommendationApiTests {
         assertEquals(400, browser.post("/api/recommendations", Map.of("prompt", "tiny"), true).statusCode());
         assertEquals(400, browser.post("/api/recommendations", Map.of("prompt", request.get("prompt"), "genre", "Unsupported"), true).statusCode());
         assertEquals(400, browser.post("/api/recommendations", Map.of("prompt", request.get("prompt"), "minRating", 8), true).statusCode());
+        assertEquals(400, browser.post("/api/recommendations", Map.of("prompt", request.get("prompt"), "refresh", true,
+                "excludeIds", List.of("https://example.test/book")), true).statusCode());
+        assertEquals(400, browser.post("/api/recommendations", Map.of("prompt", request.get("prompt"), "refresh", true,
+                "excludeIds", java.util.Collections.nCopies(13, "/works/OL1W")), true).statusCode());
         assertEquals(413, browser.post("/api/recommendations", Map.of("prompt", request.get("prompt"), "unknown", "x".repeat(9000)), true).statusCode());
     }
 

@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,15 +19,26 @@ public class CatalogService {
     private static final long REQUEST_BUDGET_MILLIS = 12000;
     private final List<BookPreview> catalog;
     private final OpenLibraryService openLibrary;
+    private final GoogleBooksService google;
 
     // A continuation names a source page and the first unused matching item.
     // It survives cache expiry without retaining or replaying an entire search.
     private record Cursor(boolean curated, int providerPage, int itemOffset) {
         String value() { return curated ? "curated:" + itemOffset : "ol:" + providerPage + ":" + itemOffset; }
     }
+    private record GoogleCursor(int providerPage, int itemOffset) {
+        String value() { return "gb:" + providerPage + ":" + itemOffset; }
+    }
+    private record GoogleDiscovery(CatalogPage page, ProviderOutcome initialFailure) { }
 
     public CatalogService(ObjectMapper mapper, OpenLibraryService openLibrary) throws IOException {
+        this(mapper, openLibrary, null);
+    }
+
+    @Autowired
+    public CatalogService(ObjectMapper mapper, OpenLibraryService openLibrary, GoogleBooksService google) throws IOException {
         this.openLibrary = openLibrary;
+        this.google = google;
         try (var input = new ClassPathResource("catalog.json").getInputStream()) {
             catalog = List.copyOf(Arrays.asList(mapper.readValue(input, BookPreview[].class)));
         }
@@ -68,14 +80,105 @@ public class CatalogService {
         if (page > 1 && (continuation == null || continuation.isBlank())) {
             badRequest("Use the nextCursor from the previous response to continue browsing.");
         }
+        boolean continuing = continuation != null && !continuation.isBlank();
+        boolean googleCursor = continuing && continuation.startsWith("gb:");
+        if (trending && googleCursor) badRequest("Trending requires an Open Library catalog cursor.");
+        ProviderOutcome googleFailure = null;
+        if (!trending && (googleCursor || !continuing && google != null)) {
+            GoogleDiscovery primary = discoverGoogle(text, selectedGenre, minRating, page,
+                    googleCursor ? parseGoogleCursor(continuation) : new GoogleCursor(1, 0), googleCursor, publicationWindow);
+            if (primary.page() != null) return withPublicationWindow(primary.page(), publicationWindow);
+            googleFailure = primary.initialFailure();
+        }
         Cursor cursor = parseCursor(continuation);
         if (trending && cursor.curated()) badRequest("Trending requires a live catalog cursor.");
         if (cursor.curated()) return withPublicationWindow(curatedPage(text, selectedGenre, minRating, page, cursor.itemOffset()), publicationWindow);
-        CatalogPage live = discover(text, selectedGenre, minRating, page, cursor, continuation != null && !continuation.isBlank(), trending);
+        CatalogPage live = discover(text, selectedGenre, minRating, page, cursor, continuing, trending);
         // An offline selection cannot truthfully be labelled 'trending now'.
         if (live == null && trending) return withPublicationWindow(new CatalogPage(List.of(), page, BROWSE_PAGE_SIZE, null, true,
                 "unavailable", "Current trends could not be fetched from Open Library. Please try again.", "ol:1:0"), publicationWindow);
-        return withPublicationWindow(live != null ? live : curatedPage(text, selectedGenre, minRating, page, 0), publicationWindow);
+        CatalogPage result = live != null ? live : curatedPage(text, selectedGenre, minRating, page, 0);
+        if (googleFailure != null) result = withProvider(result, googleFailure);
+        return withPublicationWindow(result, publicationWindow);
+    }
+
+    /** Google is the main catalog; source cursors preserve unused records instead of dropping a 20-row page's tail. */
+    private GoogleDiscovery discoverGoogle(String text, String genre, Double minRating, int page,
+            GoogleCursor cursor, boolean continuing, PublicationWindow window) {
+        int providerPage = cursor.providerPage();
+        int itemOffset = cursor.itemOffset();
+        int fetched = 0;
+        int received = 0;
+        boolean connected = false;
+        boolean exhausted = false;
+        ProviderOutcome failure = null;
+        var matches = new LinkedHashMap<String, BookPreview>();
+        long deadline = System.currentTimeMillis() + REQUEST_BUDGET_MILLIS;
+        while (matches.size() < BROWSE_PAGE_SIZE && !exhausted && fetched < 3 && System.currentTimeMillis() < deadline) {
+            GoogleBooksService.GooglePage remote = google == null
+                    ? new GoogleBooksService.GooglePage(List.of(), 0, false,
+                            new ProviderOutcome("Google Books", "not_configured", "Google Books is not configured on this server.", 0, 0))
+                    : google.searchPage(text, genre, minRating, providerPage, window == null);
+            fetched++;
+            ProviderOutcome outcome = remote.outcome();
+            received += outcome.received();
+            if (List.of("not_configured", "quota_limited", "unavailable").contains(outcome.state())) {
+                failure = outcome;
+                break; // Never skip a failed source page or silently switch a continuation's provider.
+            }
+            connected = true;
+            var uniquePage = new LinkedHashMap<String, BookPreview>();
+            for (BookPreview book : remote.books()) uniquePage.putIfAbsent(CatalogQuality.identity(book), book);
+            List<BookPreview> candidates = List.copyOf(uniquePage.values());
+            int index = Math.min(itemOffset, candidates.size());
+            while (index < candidates.size() && matches.size() < BROWSE_PAGE_SIZE) {
+                BookPreview book = candidates.get(index++);
+                if (acceptableGoogle(book, text, genre, minRating, window))
+                    matches.putIfAbsent(CatalogQuality.identity(book), book);
+            }
+            itemOffset = index;
+            if (index < candidates.size()) break;
+            exhausted = !remote.hasMore() || providerPage >= 50;
+            if (!exhausted) { providerPage++; itemOffset = 0; }
+        }
+        if (!connected && !continuing && failure != null) return new GoogleDiscovery(null, failure);
+        boolean more = !exhausted;
+        String message;
+        if (failure != null) message = failure.message() + " Your Google Books browsing position is kept; load more to retry.";
+        else if (matches.isEmpty() && !more) message = "Google Books responded, but no books matched these choices. Try another search, genre or minimum rating.";
+        else if (matches.size() < BROWSE_PAGE_SIZE && more) message = "Still looking through Google Books for matching editions. Load more to continue from this point.";
+        else message = minRating != null && minRating > 0
+                ? "Google Books editions averaging " + minRating + "+ stars. Unrated books are excluded."
+                : "Browsing Google Books catalog records, including rated and unrated editions.";
+        String state = failure != null ? failure.state() : !matches.isEmpty() ? "ok" : received > 0 ? "filtered" : "empty";
+        ProviderOutcome outcome = new ProviderOutcome("Google Books", state, message, received, matches.size());
+        CatalogPage result = new CatalogPage(List.copyOf(matches.values()), page, BROWSE_PAGE_SIZE, null, more,
+                "googlebooks", message, more ? new GoogleCursor(providerPage, itemOffset).value() : null,
+                null, null, List.of(outcome), "edition");
+        return new GoogleDiscovery(result, null);
+    }
+
+    private boolean acceptableGoogle(BookPreview book, String text, String genre, Double minRating, PublicationWindow window) {
+        if (!BookIdentifier.valid(book.id()) || CatalogQuality.ancillary(book)) return false;
+        if (text.isBlank() && !CatalogQuality.discoveryBook(book)) return false;
+        if (!CatalogQuality.matchesGenre(book, genre)) return false;
+        if ("Kids".equals(genre) != ("Kids".equals(book.genre()) || BookAudience.isKids(book.id(), book.tags()))) return false;
+        if (book.year() != null && book.year() > java.time.Year.now(java.time.ZoneOffset.UTC).getValue()) return false;
+        if (window != null && !window.contains(book.year())) return false;
+        if (minRating != null && minRating > 0 && (book.rating() == null || book.rating() < minRating)) return false;
+        // A known old original must not be presented as new just because Google lists a recent edition.
+        return window == null || catalog.stream().filter(local -> CatalogQuality.sameIdentity(local, book))
+                .noneMatch(local -> local.year() != null && local.year() < window.firstYear());
+    }
+
+    private GoogleCursor parseGoogleCursor(String value) {
+        if (value == null || !value.matches("gb:[1-9][0-9]?:[0-9]{1,2}"))
+            badRequest("This Google Books browsing cursor is no longer valid. Start a new search.");
+        String[] parts = value.split(":");
+        int providerPage = Integer.parseInt(parts[1]);
+        int itemOffset = Integer.parseInt(parts[2]);
+        if (providerPage > 50 || itemOffset > 20) badRequest("Invalid position in the Google Books catalog page.");
+        return new GoogleCursor(providerPage, itemOffset);
     }
 
     /** Fetch only enough source pages for this human-requested batch. */
@@ -174,19 +277,36 @@ public class CatalogService {
 
     private void badRequest(String message) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message); }
 
+    private CatalogPage withProvider(CatalogPage result, ProviderOutcome outcome) {
+        var providers = new java.util.ArrayList<ProviderOutcome>();
+        providers.add(outcome);
+        providers.addAll(result.providers());
+        return new CatalogPage(result.books(), result.page(), result.pageSize(), result.total(), result.hasMore(),
+                result.source(), result.message(), result.nextCursor(), result.minPublicationYear(), result.maxPublicationYear(),
+                List.copyOf(providers), result.publicationBasis());
+    }
+
     private CatalogPage withPublicationWindow(CatalogPage result, PublicationWindow window) {
         String message = result.message();
-        if (window != null) message += " English editions. First published " + window.label()
-                + ". Search a title or author to include older books.";
+        if (window != null) message += "edition".equals(result.publicationBasis())
+                ? " English editions published " + window.label() + ". Edition dates may be newer than a work's original publication. Search a title or author to include older books."
+                : " English editions. First published " + window.label() + ". Search a title or author to include older books.";
         return new CatalogPage(result.books(), result.page(), result.pageSize(), result.total(), result.hasMore(),
-                result.source(), message, result.nextCursor(), window == null ? null : window.firstYear(), window == null ? null : window.lastYear());
+                result.source(), message, result.nextCursor(), window == null ? null : window.firstYear(), window == null ? null : window.lastYear(),
+                result.providers(), result.publicationBasis());
     }
 
     public record CatalogPage(List<BookPreview> books, int page, int pageSize, Long total,
-            boolean hasMore, String source, String message, String nextCursor, Integer minPublicationYear, Integer maxPublicationYear) {
+            boolean hasMore, String source, String message, String nextCursor, Integer minPublicationYear, Integer maxPublicationYear,
+            List<ProviderOutcome> providers, String publicationBasis) {
+        public CatalogPage { providers = providers == null ? List.of() : List.copyOf(providers); }
         CatalogPage(List<BookPreview> books, int page, int pageSize, Long total,
                 boolean hasMore, String source, String message, String nextCursor) {
-            this(books, page, pageSize, total, hasMore, source, message, nextCursor, null, null);
+            this(books, page, pageSize, total, hasMore, source, message, nextCursor, null, null, List.of(), "original");
+        }
+        CatalogPage(List<BookPreview> books, int page, int pageSize, Long total,
+                boolean hasMore, String source, String message, String nextCursor, Integer minPublicationYear, Integer maxPublicationYear) {
+            this(books, page, pageSize, total, hasMore, source, message, nextCursor, minPublicationYear, maxPublicationYear, List.of(), "original");
         }
     }
 }
