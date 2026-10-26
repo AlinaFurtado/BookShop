@@ -1,0 +1,226 @@
+/* Original Reading Passport demo styling, scoped to the real book passport. */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap');
+#bookbuddy-passport {
+  color-scheme: light;
+  --bbp-bg: light-dark(#e9e0ce,#1d1926);
+  --bbp-paper: light-dark(#fff9ec,#302939);
+  --bbp-paper2: light-dark(#f5ead5,#3c3145);
+  --bbp-ink: light-dark(#30203c,#f9efff);
+  --bbp-muted: light-dark(#6b5e6c,#d4c7d7);
+  --bbp-line: light-dark(#d6c7b3,#5b4a62);
+  --bbp-purple: light-dark(#533174,#b28cdb);
+  --bbp-plum: light-dark(#392050,#2a1b3c);
+  --bbp-coral: light-dark(#ea786a,#f4a192);
+  --bbp-coral-ink: light-dark(#b74944,#ffb9ab);
+  --bbp-lime: light-dark(#cfdf9e,#8aa965);
+  --bbp-gold: light-dark(#b69960,#dac28a);
+  --bbp-shadow: light-dark(#523e5540,#08050caa);
+  max-width:1024px; min-width:0; margin:0 auto; background:var(--bbp-bg); color:var(--bbp-ink);
+  font-family:'DM Sans','Trebuchet MS',sans-serif; position:relative; overflow:hidden; isolation:isolate;
+}
+#bookbuddy-passport * { box-sizing:border-box }
+#bookbuddy-passport [hidden] { display:none!important }
+#bookbuddy-passport h1,#bookbuddy-passport h2,#bookbuddy-passport h3,#bookbuddy-passport p { margin-top:0 }
+#bookbuddy-passport h1,#bookbuddy-passport h2,#bookbuddy-passport h3 { font-family:Fraunces,Georgia,serif }
+#bookbuddy-passport button,#bookbuddy-passport input,#bookbuddy-passport textarea { font:inherit }
+#bookbuddy-passport button { cursor:pointer }
+#bookbuddy-passport button:focus-visible,#bookbuddy-passport input:focus-visible,#bookbuddy-passport textarea:focus-visible { outline:3px solid var(--bbp-coral); outline-offset:3px }
+#bookbuddy-passport .bbp-header { min-height:68px; padding:12px 30px; display:flex; justify-content:space-between; align-items:center; gap:15px; background:var(--bbp-plum); color:#f9edcf; border-bottom:4px solid var(--bbp-coral) }
+#bookbuddy-passport .bbp-logo { display:flex; align-items:center; gap:10px; white-space:nowrap }
+#bookbuddy-passport .bbp-logo-mark { display:grid; place-items:center; width:35px; height:35px; border-radius:9px; background:#ed8374; color:#392050; font-size:24px; transform:rotate(-8deg); box-shadow:3px 3px 0 #bda16e }
+#bookbuddy-passport .bbp-logo-text { font-family:Fraunces,Georgia,serif; font-size:23px; font-weight:700; letter-spacing:-.04em }
+#bookbuddy-passport .bbp-header-right { display:flex; align-items:center; justify-content:flex-end; gap:12px; flex-wrap:wrap; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.12em }
+#bookbuddy-passport .bbp-demo-pill { border:1px solid #cdb079; color:#f3dfb1; border-radius:30px; padding:7px 11px; white-space:nowrap }
+#bookbuddy-passport .bbp-main { padding:26px 29px 28px; background:radial-gradient(circle at 7% 15%,light-dark(#fff2d1,#32243c) 0 5%,transparent 26%),radial-gradient(circle at 95% 85%,light-dark(#f1d7d1,#3d2c3e) 0 5%,transparent 25%),var(--bbp-bg) }
+#bookbuddy-passport .bbp-overline { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin:0 7px 13px; font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--bbp-purple) }
+#bookbuddy-passport .bbp-count { color:var(--bbp-muted) }
+#bookbuddy-passport .bbp-book { border-radius:6px 12px 12px 6px; position:relative; box-shadow:0 17px 0 -9px var(--bbp-line),0 25px 0 -14px var(--bbp-paper),0 31px 38px var(--bbp-shadow) }
+#bookbuddy-passport .bbp-book::after { content:''; position:absolute; left:calc(50% - 6px); top:0; bottom:0; width:12px; z-index:5; background:linear-gradient(90deg,#30203c22,#ffffffaa 48%,#30203c24 76%,transparent); pointer-events:none }
+#bookbuddy-passport .bbp-spread { display:grid; grid-template-columns:1fr 1fr; min-height:590px; border:1px solid var(--bbp-line); border-radius:inherit; overflow:hidden; background:var(--bbp-paper); animation:bbp-page-turn .35s ease both }
+#bookbuddy-passport .bbp-page { position:relative; min-width:0; padding:29px 31px; background:var(--bbp-paper) }
+#bookbuddy-passport .bbp-page::before { content:''; position:absolute; inset:12px; border:1px solid color-mix(in srgb,var(--bbp-gold) 38%,transparent); pointer-events:none }
+#bookbuddy-passport .bbp-page:nth-child(2) { box-shadow:inset 11px 0 16px -13px #2b203b99 }
+#bookbuddy-passport .bbp-page-inner { position:relative; z-index:1; min-height:530px; height:100%; display:flex; flex-direction:column }
+#bookbuddy-passport .bbp-cover { color:#f5dfb0; background:var(--bbp-plum); text-align:center; display:grid; place-items:center }
+#bookbuddy-passport .bbp-cover::before { border:1px solid #bfa16d; inset:15px }
+#bookbuddy-passport .bbp-cover::after { content:''; position:absolute; inset:24px; border:1px solid #bfa16d80; border-radius:48% 48% 4px 4px / 7% 7% 4px 4px }
+#bookbuddy-passport .bbp-cover .bbp-page-inner { justify-content:center; align-items:center; padding:14px }
+#bookbuddy-passport .bbp-cover-small { font-size:11px; font-weight:700; line-height:1.7; letter-spacing:.3em; text-transform:uppercase; color:#e3ca95 }
+#bookbuddy-passport .bbp-cover-seal { width:150px; height:150px; margin:20px 0 23px; display:grid; place-items:center; border:5px double #d9bd86; border-radius:50%; box-shadow:0 0 0 7px #392050,0 0 0 8px #d9bd86; font-family:Georgia,serif; font-size:75px; transform:rotate(-9deg) }
+#bookbuddy-passport .bbp-cover h1 { max-width:330px; font-size:clamp(31px,4vw,46px); line-height:1; letter-spacing:-.05em; color:#f5dfb0; margin:0 0 12px }
+#bookbuddy-passport .bbp-cover-motto { border-top:1px solid #d9bd86; padding-top:12px; font-family:Georgia,serif; font-style:italic; font-size:15px }
+#bookbuddy-passport .bbp-cover-foot { margin-top:29px; font-size:11px; letter-spacing:.22em; color:#e3ca95 }
+#bookbuddy-passport .bbp-page-head { display:flex; justify-content:space-between; align-items:flex-start; gap:9px; border-bottom:1px solid var(--bbp-line); padding-bottom:11px }
+#bookbuddy-passport .bbp-kicker { font-size:10px; font-weight:700; letter-spacing:.19em; text-transform:uppercase; color:var(--bbp-coral-ink) }
+#bookbuddy-passport .bbp-page-index { font-family:Georgia,serif; font-size:15px; color:var(--bbp-gold) }
+#bookbuddy-passport .bbp-page h2 { margin:18px 0 9px; font-size:clamp(25px,3vw,32px); line-height:1.08; letter-spacing:-.04em }
+#bookbuddy-passport .bbp-page p { font-size:13px; line-height:1.5; color:var(--bbp-muted) }
+#bookbuddy-passport .bbp-id { display:grid; grid-template-columns:110px 1fr; gap:15px; margin:13px 0 16px }
+#bookbuddy-passport .bbp-photo { aspect-ratio:.79; overflow:hidden; background:linear-gradient(140deg,light-dark(#e9dded,#503d5e),var(--bbp-lime)); border:4px solid var(--bbp-paper2); position:relative }
+#bookbuddy-passport .bbp-photo::before { content:''; position:absolute; top:24%; left:calc(50% - 22px); width:44px; height:44px; border-radius:50%; background:var(--bbp-purple) }
+#bookbuddy-passport .bbp-photo::after { content:''; position:absolute; bottom:-13px; left:calc(50% - 47px); width:94px; height:81px; border-radius:55% 55% 0 0; background:var(--bbp-purple) }
+#bookbuddy-passport .bbp-id-facts { display:grid; align-content:center; gap:9px }
+#bookbuddy-passport .bbp-fact { min-width:0; border-bottom:1px dashed var(--bbp-line); padding-bottom:7px }
+#bookbuddy-passport .bbp-label { display:block; margin:0 0 5px; color:var(--bbp-purple); font-size:10px; font-weight:700; letter-spacing:.16em; text-transform:uppercase }
+#bookbuddy-passport .bbp-fact strong { font-family:Georgia,serif; font-size:15px; font-weight:400 }
+#bookbuddy-passport .bbp-name { width:100%; min-width:0; color:var(--bbp-ink); background:transparent; border:0; border-bottom:2px solid var(--bbp-purple); border-radius:0; padding:4px 0; font-family:Georgia,serif!important; font-size:18px!important }
+#bookbuddy-passport .bbp-id-bottom { display:flex; gap:14px; justify-content:space-between; align-items:end; padding-top:14px; border-top:1px solid var(--bbp-line); margin-top:auto }
+#bookbuddy-passport .bbp-script { font:italic 13px/1.4 Georgia,serif; color:var(--bbp-muted) }
+#bookbuddy-passport .bbp-mini-visa { width:86px; height:86px; flex:none; border:2px dashed var(--bbp-purple); border-radius:50%; display:grid; place-items:center; text-align:center; transform:rotate(-10deg); color:var(--bbp-purple); font:11px/1.1 Georgia,serif; text-transform:uppercase }
+#bookbuddy-passport .bbp-bottom { margin-top:auto; padding-top:14px }
+#bookbuddy-passport .bbp-action { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:44px; padding:11px 17px; border:0; border-radius:30px; background:var(--bbp-purple); color:light-dark(#fff9ef,#21142b); font-size:13px; font-weight:700; text-align:center; transition:transform .2s ease,box-shadow .2s ease }
+#bookbuddy-passport .bbp-action:hover:not(:disabled) { transform:translateY(-2px) rotate(-1deg); box-shadow:0 5px 0 var(--bbp-line) }
+#bookbuddy-passport .bbp-action:disabled { opacity:.48; cursor:not-allowed }
+#bookbuddy-passport .bbp-action-coral { background:var(--bbp-coral); color:light-dark(#332034,#2a182b) }
+#bookbuddy-passport .bbp-link { border:0; padding:7px 0; color:var(--bbp-purple); background:transparent; text-decoration:underline; text-underline-offset:3px; font-size:13px; font-weight:700 }
+#bookbuddy-passport .bbp-dept-sticker { display:inline-block; align-self:start; padding:7px 10px; border:1px dashed var(--bbp-coral-ink); color:var(--bbp-coral-ink); font:italic 12px Georgia,serif; transform:rotate(-3deg); margin-top:13px }
+#bookbuddy-passport .bbp-portals { display:grid; gap:10px; margin:16px 0 9px }
+#bookbuddy-passport .bbp-portal { display:grid; grid-template-columns:51px 1fr auto; gap:10px; align-items:center; width:100%; min-height:94px; text-align:left; border:1px solid var(--bbp-line); border-radius:3px 18px 3px 18px; padding:9px 11px; background:var(--bbp-paper2); color:var(--bbp-ink); transition:transform .2s ease,box-shadow .2s ease }
+#bookbuddy-passport .bbp-portal:hover,#bookbuddy-passport .bbp-portal[aria-pressed="true"] { transform:translateX(3px) rotate(-.5deg); box-shadow:4px 4px 0 var(--bbp-purple) }
+#bookbuddy-passport .bbp-portal[aria-pressed="true"] { border-color:var(--bbp-purple) }
+#bookbuddy-passport .bbp-portal-glyph { width:49px; height:53px; border-radius:50%; display:grid; place-items:center; background:var(--bbp-lime); font-size:29px }
+#bookbuddy-passport .bbp-portal[data-destination="mystery"] .bbp-portal-glyph { background:light-dark(#e9dbee,#6b5277) }
+#bookbuddy-passport .bbp-portal[data-destination="orbit"] .bbp-portal-glyph { background:var(--bbp-coral) }
+#bookbuddy-passport .bbp-portal strong { display:block; font:600 17px/1.1 Fraunces,Georgia,serif }
+#bookbuddy-passport .bbp-portal small { display:block; margin-top:4px; font-size:11px; line-height:1.25; color:var(--bbp-muted) }
+#bookbuddy-passport .bbp-portal-arrow { font-size:20px; font-weight:700; color:var(--bbp-purple) }
+#bookbuddy-passport .bbp-ticket { margin:16px 0; padding:16px; position:relative; border:1px dashed var(--bbp-gold); background:var(--bbp-paper2) }
+#bookbuddy-passport .bbp-ticket::before,#bookbuddy-passport .bbp-ticket::after { content:''; position:absolute; top:50%; width:16px; height:16px; border-radius:50%; background:var(--bbp-paper) }
+#bookbuddy-passport .bbp-ticket::before { left:-9px } #bookbuddy-passport .bbp-ticket::after { right:-9px }
+#bookbuddy-passport .bbp-ticket-top { display:flex; justify-content:space-between; gap:7px; font-size:10px; font-weight:700; color:var(--bbp-muted); text-transform:uppercase; letter-spacing:.12em }
+#bookbuddy-passport .bbp-route { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:15px 0 12px; font:600 21px/1 Fraunces,Georgia,serif }
+#bookbuddy-passport .bbp-route span { font-family:Georgia,serif; color:var(--bbp-coral-ink) }
+#bookbuddy-passport .bbp-ticket-line { border-top:2px dashed var(--bbp-line); margin:12px -16px }
+#bookbuddy-passport .bbp-ticket-foot { font-size:10px; line-height:1.4; color:var(--bbp-muted); text-transform:uppercase; letter-spacing:.08em }
+#bookbuddy-passport .bbp-book-picks { display:grid; gap:8px; margin:12px 0 10px }
+#bookbuddy-passport .bbp-pick { min-height:59px; display:flex; align-items:center; gap:10px; padding:8px 10px; width:100%; text-align:left; border:1px solid var(--bbp-line); border-radius:4px; background:var(--bbp-paper); color:var(--bbp-ink) }
+#bookbuddy-passport .bbp-pick[aria-pressed="true"] { border:2px solid var(--bbp-purple); background:light-dark(#eee4f4,#463652) }
+#bookbuddy-passport .bbp-spine { width:30px; height:39px; flex:none; display:grid; place-items:center; background:var(--bbp-coral); color:#392050; border-left:5px solid #30203c44; border-radius:2px 4px 4px 2px; box-shadow:2px 3px 0 var(--bbp-line); font:19px Georgia,serif }
+#bookbuddy-passport .bbp-pick:nth-child(2) .bbp-spine { background:var(--bbp-lime) }
+#bookbuddy-passport .bbp-pick strong { display:block; font:15px/1.2 Georgia,serif }
+#bookbuddy-passport .bbp-pick small { display:block; margin-top:3px; font-size:11px; color:var(--bbp-muted) }
+#bookbuddy-passport .bbp-note { font-size:11px!important; line-height:1.4!important; color:var(--bbp-muted) }
+#bookbuddy-passport .bbp-boarding-pass { margin:17px 0; padding:21px 20px; border:2px solid var(--bbp-purple); background:light-dark(#ede2f3,#493654); position:relative; overflow:hidden }
+#bookbuddy-passport .bbp-boarding-pass::before { content:''; position:absolute; top:-40px; right:-35px; width:110px; height:110px; border:1px dashed var(--bbp-coral); border-radius:50% }
+#bookbuddy-passport .bbp-boarding-book { font:600 25px/1.1 Fraunces,Georgia,serif; margin:6px 0 }
+#bookbuddy-passport .bbp-boarding-meta { font-size:12px; line-height:1.4; color:var(--bbp-muted) }
+#bookbuddy-passport .bbp-barcode { display:flex; gap:2px; height:33px; overflow:hidden; margin-top:17px }
+#bookbuddy-passport .bbp-barcode i { width:3px; background:var(--bbp-purple); flex:none }
+#bookbuddy-passport .bbp-barcode i:nth-child(3n) { width:7px } #bookbuddy-passport .bbp-barcode i:nth-child(5n) { margin-right:5px }
+#bookbuddy-passport .bbp-empty-ticket { margin:18px 0; padding:25px 20px; border:2px dashed var(--bbp-line); text-align:center; color:var(--bbp-muted); font-size:13px }
+#bookbuddy-passport .bbp-empty-ticket span { display:block; font-size:38px; margin-bottom:5px }
+#bookbuddy-passport .bbp-stamp-stage { min-height:149px; margin:15px 0 19px; border-block:1px solid var(--bbp-line); display:grid; place-items:center }
+#bookbuddy-passport .bbp-stamp-empty { width:117px; height:117px; border:2px dashed var(--bbp-line); border-radius:50%; display:grid; place-items:center; text-align:center; transform:rotate(-12deg); font:italic 13px/1.2 Georgia,serif; color:var(--bbp-muted) }
+#bookbuddy-passport .bbp-stamp-mark { width:129px; height:129px; border:5px double var(--bbp-coral-ink); border-radius:50%; box-shadow:inset 0 0 0 2px var(--bbp-coral-ink); padding:10px; display:grid; place-items:center; text-align:center; transform:rotate(-12deg); color:var(--bbp-coral-ink); font-family:Georgia,serif }
+#bookbuddy-passport .bbp-stamp-mark.is-fresh { animation:bbp-ink .55s cubic-bezier(.2,1.5,.2,1) both }
+#bookbuddy-passport .bbp-stamp-mark b,#bookbuddy-passport .bbp-stamp-mark strong,#bookbuddy-passport .bbp-stamp-mark small { display:block; line-height:1.05 }
+#bookbuddy-passport .bbp-stamp-mark b { font-size:12px; letter-spacing:.07em } #bookbuddy-passport .bbp-stamp-mark strong { font-size:20px } #bookbuddy-passport .bbp-stamp-mark small { font-size:10px }
+#bookbuddy-passport .bbp-input { width:100%; min-height:44px; padding:9px 10px; border:1px solid var(--bbp-line); border-radius:4px; background:var(--bbp-paper); color:var(--bbp-ink); font-size:16px!important }
+#bookbuddy-passport .bbp-textarea { min-height:86px; resize:vertical }
+#bookbuddy-passport .bbp-confirm { display:block; margin:11px 0 16px; color:var(--bbp-muted); font-size:12px; line-height:1.4 }
+#bookbuddy-passport .bbp-status { min-height:20px; margin:9px 0 0; font-size:12px!important; font-weight:700; color:var(--bbp-coral-ink)!important }
+#bookbuddy-passport .bbp-visa-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; margin:17px 0 }
+#bookbuddy-passport .bbp-visa { min-height:108px; display:grid; place-items:center; padding:10px; border:2px dashed var(--bbp-line); background:var(--bbp-paper2); color:var(--bbp-muted); text-align:center; font:italic 12px/1.3 Georgia,serif; transform:rotate(-2deg) }
+#bookbuddy-passport .bbp-visa:nth-child(even) { transform:rotate(2deg) }
+#bookbuddy-passport .bbp-visa-filled { min-height:116px; border:3px double var(--bbp-coral-ink); color:var(--bbp-coral-ink); background:var(--bbp-paper); font-style:normal }
+#bookbuddy-passport .bbp-visa-filled[aria-pressed="true"] { box-shadow:4px 4px 0 var(--bbp-purple) }
+#bookbuddy-passport .bbp-visa b { display:block; font-size:14px; line-height:1; letter-spacing:.06em }
+#bookbuddy-passport .bbp-visa small { font-size:11px }
+#bookbuddy-passport .bbp-souvenir { margin:15px 0 19px; padding:18px; background:var(--bbp-paper2); border:1px solid var(--bbp-line); box-shadow:5px 5px 0 var(--bbp-lime); position:relative }
+#bookbuddy-passport .bbp-souvenir::after { content:''; position:absolute; right:-8px; top:50%; width:15px; height:15px; border-radius:50%; background:var(--bbp-paper) }
+#bookbuddy-passport .bbp-souvenir h3 { margin:9px 0 6px; font-size:24px; line-height:1.1 }
+#bookbuddy-passport .bbp-souvenir p { margin:0; font-size:12px }
+#bookbuddy-passport .bbp-memory-empty { margin:auto 0; padding:25px 19px; background:light-dark(#eee4f4,#473653); text-align:center }
+#bookbuddy-passport .bbp-memory-empty span { display:block; font-size:38px }
+#bookbuddy-passport .bbp-memory-empty strong { display:block; margin:8px 0 4px; font:600 22px Fraunces,Georgia,serif }
+#bookbuddy-passport .bbp-tabs { display:flex; justify-content:center; flex-wrap:wrap; gap:7px; padding:25px 0 0 }
+#bookbuddy-passport .bbp-tab { min-height:44px; display:flex; align-items:center; gap:6px; padding:8px 14px; border:1px solid var(--bbp-line); border-radius:3px 3px 13px 13px; background:var(--bbp-paper2); color:var(--bbp-ink); font-size:12px; font-weight:700 }
+#bookbuddy-passport .bbp-tab[aria-current="page"] { background:var(--bbp-coral); color:light-dark(#392237,#2b1d2b); border-color:var(--bbp-coral-ink); transform:translateY(-4px) rotate(-1deg); box-shadow:0 4px 0 var(--bbp-line) }
+#bookbuddy-passport .bbp-tab span { font:14px Georgia,serif; opacity:.6 }
+#bookbuddy-passport .bbp-foot { margin:16px 0 0; text-align:center; font-size:11px; line-height:1.4; color:var(--bbp-muted) }
+@keyframes bbp-page-turn { from { opacity:.7; transform:perspective(700px) rotateY(-3deg) translateX(6px) } to { opacity:1; transform:none } }
+@keyframes bbp-ink { from { opacity:0; transform:rotate(-26deg) scale(1.8); filter:blur(2px) } 55% { opacity:1; transform:rotate(-7deg) scale(.9); filter:none } to { transform:rotate(-12deg) scale(1) } }
+@media (max-width:720px) {
+  #bookbuddy-passport .bbp-main { padding:20px 17px 27px }
+  #bookbuddy-passport .bbp-page { padding:25px 23px }
+  #bookbuddy-passport .bbp-spread { min-height:540px }
+  #bookbuddy-passport .bbp-page-inner { min-height:490px }
+  #bookbuddy-passport .bbp-id { grid-template-columns:90px 1fr; gap:10px }
+  #bookbuddy-passport .bbp-portal { grid-template-columns:43px 1fr auto; gap:8px }
+  #bookbuddy-passport .bbp-portal-glyph { width:42px; height:45px; font-size:25px }
+}
+@media (max-width:600px) {
+  #bookbuddy-passport .bbp-header { padding:11px 16px }
+  #bookbuddy-passport .bbp-logo-text { font-size:19px }
+  #bookbuddy-passport .bbp-header-right { font-size:10px }
+  #bookbuddy-passport .bbp-spread { grid-template-columns:1fr }
+  #bookbuddy-passport .bbp-book::after { display:none }
+  #bookbuddy-passport .bbp-page:nth-child(2) { border-top:2px solid var(--bbp-line); box-shadow:none }
+  #bookbuddy-passport .bbp-page-inner { min-height:0 }
+  #bookbuddy-passport .bbp-page { min-height:420px }
+  #bookbuddy-passport .bbp-cover { min-height:415px }
+  #bookbuddy-passport .bbp-id { grid-template-columns:110px 1fr }
+}
+@media (max-width:390px) {
+  #bookbuddy-passport .bbp-main { padding:16px 10px 24px }
+  #bookbuddy-passport .bbp-header { padding:10px }
+  #bookbuddy-passport .bbp-header-right > span:first-child { display:none }
+  #bookbuddy-passport .bbp-logo-text { font-size:17px }
+  #bookbuddy-passport .bbp-logo-mark { width:30px; height:30px }
+  #bookbuddy-passport .bbp-page { padding:24px 20px }
+  #bookbuddy-passport .bbp-id { grid-template-columns:90px 1fr }
+  #bookbuddy-passport .bbp-tab { padding:8px 10px }
+}
+@media (prefers-reduced-motion:reduce) { #bookbuddy-passport *,#bookbuddy-passport *::before,#bookbuddy-passport *::after { animation-duration:.01ms!important; transition-duration:.01ms!important } }
+
+/* The surrounding dialog and real saved-book fields are the only additions
+   to the demo's paper, cover, ticket, stamp and page-turn styling above. */
+.modal.passport-modal.passport-replica { width:min(1028px,calc(100% - 32px)); }
+.passport-modal.passport-replica .modal-inner { padding:0; background:#e9e0ce; border:2px solid #392050; border-radius:8px 14px 14px 8px; }
+.passport-modal.passport-replica .modal-close { width:32px; height:32px; right:14px; top:17px; background:#ea9787; z-index:7; }
+#bookbuddy-passport .bbp-header { padding-right:62px; }
+#bookbuddy-passport .bbp-header-right { font-size:9px; gap:8px; max-width:360px; }
+#bookbuddy-passport .bbp-book { scroll-margin-top:12px; }
+#bookbuddy-passport button:disabled { cursor:not-allowed; }
+#bookbuddy-passport .bbp-portal:disabled { opacity:.65; transform:none; }
+#bookbuddy-passport .bbp-book-photo { width:100%; max-height:175px; aspect-ratio:3/4.1; border:4px solid var(--bbp-paper2); border-radius:0; }
+#bookbuddy-passport .bbp-book-photo .illustrated-cover { padding:10px 6px; }
+#bookbuddy-passport .bbp-book-photo .illustrated-cover strong { font-size:15px; letter-spacing:0; }
+#bookbuddy-passport .bbp-book-photo .cover-topline { font-size:5px; }
+#bookbuddy-passport .bbp-book-photo .cover-author { font-size:7px; }
+#bookbuddy-passport .bbp-book-photo .cover-ornament svg { width:25px; }
+#bookbuddy-passport .bbp-id-facts strong,#bookbuddy-passport .bbp-reference strong { overflow-wrap:anywhere; }
+#bookbuddy-passport .bbp-reference { margin-bottom:20px; }
+#bookbuddy-passport .bbp-keepsake-fields { display:grid; gap:15px; }
+#bookbuddy-passport .bbp-keepsake { cursor:pointer; gap:6px; min-height:116px; transition:transform .2s ease,box-shadow .2s ease; }
+#bookbuddy-passport .bbp-keepsake:hover:not(:disabled) { box-shadow:3px 3px 0 var(--bbp-gold); border-color:var(--bbp-purple); }
+#bookbuddy-passport .bbp-keepsake-label { font:600 13px/1.3 'DM Sans',sans-serif; color:var(--bbp-purple); }
+#bookbuddy-passport .bbp-keepsake-value { max-width:100%; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere; font:italic 13px/1.35 Georgia,serif; }
+#bookbuddy-passport .bbp-keepsake-value.is-empty { opacity:.75; }
+#bookbuddy-passport .bbp-keepsake small { font:600 10px/1.4 'DM Sans',sans-serif; color:var(--bbp-coral-ink); }
+#bookbuddy-passport .bbp-extra-keepsakes { margin:16px 0; color:var(--bbp-purple); font-size:12px; }
+#bookbuddy-passport .bbp-extra-keepsakes summary { cursor:pointer; padding:8px 0; line-height:1.5; }
+#bookbuddy-passport .bbp-extra-keepsakes[open] summary { margin-bottom:12px; }
+#bookbuddy-passport .bbp-field-count { display:block; text-align:right; color:var(--bbp-muted); font-size:10px; margin-top:4px; }
+#bookbuddy-passport .bbp-memory { min-height:172px; }
+#bookbuddy-passport .bbp-bottom .bbp-dept-sticker { display:block; width:fit-content; }
+#bookbuddy-passport .bbp-route strong { overflow-wrap:anywhere; max-width:72%; }
+#bookbuddy-passport .bbp-boarding-meta,#bookbuddy-passport .bbp-boarding-book,#bookbuddy-passport .bbp-visa-filled small { overflow-wrap:anywhere; }
+#bookbuddy-passport .bbp-save-area { margin-top:17px; }
+#bookbuddy-passport .bbp-save-controls { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+#bookbuddy-passport .bbp-save-status { flex:1; text-align:center; color:var(--bbp-purple); font-size:11px; line-height:1.5; }
+#bookbuddy-passport .bbp-save-controls .bbp-action { font-size:11px; min-height:38px; padding:9px 13px; }
+#bookbuddy-passport .bbp-discard-confirm { padding:15px; margin:15px 0; border:1px solid var(--bbp-coral-ink); background:var(--bbp-paper); }
+#bookbuddy-passport .bbp-discard-confirm p { margin:0 0 9px; font-size:13px; }
+#bookbuddy-passport .bbp-discard-confirm > div { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+@media (max-width:720px) { #bookbuddy-passport .bbp-header-right > span:first-child { display:none; } }
+@media (max-width:600px) {
+  .modal.passport-modal.passport-replica { width:calc(100% - 20px); }
+  #bookbuddy-passport .bbp-header { padding-right:54px; min-height:66px; }
+  #bookbuddy-passport .bbp-header-right { font-size:8px; letter-spacing:.05em; }
+  #bookbuddy-passport .bbp-demo-pill { padding:6px 8px; }
+  #bookbuddy-passport .bbp-tabs { gap:6px; }
+  #bookbuddy-passport .bbp-tab { font-size:11px; padding:8px 9px; }
+  #bookbuddy-passport .bbp-save-status { flex-basis:100%; order:3; }
+  #bookbuddy-passport .bbp-book-photo { max-height:170px; }
+}

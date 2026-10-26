@@ -1,0 +1,55 @@
+.panel.trending-panel { margin-top: 30px; padding: 28px 25px 18px; scroll-margin-top: 22px; background: #f4edfc; }
+.trending-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.trending-heading .eyebrow { display: flex; align-items: center; gap: 7px; color: #76529b; }
+.trending-dot { width: 7px; height: 7px; border-radius: 50%; background: #dc7567; box-shadow: 0 0 0 4px #f4d7d5; }
+.trending-heading h2 { margin-top: 9px; font-size: 40px; letter-spacing: -1.2px; line-height: 1.15; }
+.trending-heading h2 em { color: var(--purple); }
+.trending-heading h2 > span { color: #cd715d; display: inline-block; transform: rotate(-8deg); }
+.trending-heading p { margin-top: 8px; color: var(--muted); font-size: 11px; line-height: 1.7; }
+.trending-sticker { display: flex; flex-direction: column; align-items: center; gap: 5px; flex-shrink: 0; padding: 13px 15px; text-align: center; border: 1.5px solid var(--ink); border-radius: 50%; background: var(--coral); box-shadow: 3px 3px 0 var(--ink); font-size: 9px; font-weight: 900; letter-spacing: 1px; line-height: 1.35; transform: rotate(9deg); }
+.trending-tools { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px; margin: 23px 0 10px; }
+.trending-actions { display: flex; align-items: center; gap: 19px; margin-left: auto; }
+.trending-actions > .text-button { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; }
+.trending-arrows { display: flex; gap: 7px; }
+.trending-arrows .button { min-height: 34px; width: 36px; padding: 7px; background: var(--paper); }
+.reverse-arrow { display: inline-flex; transform: rotate(180deg); }
+.trending-status { min-height: 32px; display: flex; align-items: center; flex-wrap: wrap; gap: 9px; font-size: 9px; color: var(--muted); }
+.trending-status .spinner { width: 14px; height: 14px; }
+.trending-live { border: 1px solid #b5c985; padding: 4px 6px; border-radius: 4px; background: #e5efca; color: #526136; font-size: 7px; font-weight: 900; letter-spacing: .6px; }
+.trending-placeholder, .trending-empty { text-align: center; padding: 25px 15px; }
+.trending-placeholder p, .trending-empty p { margin: 9px 0 16px; font-size: 11px; color: var(--muted); line-height: 1.7; }
+.trending-empty h3 { margin-top: 10px; font: 24px Georgia, serif; }
+.trending-viewport { overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding: 6px 5px 15px 1px; scrollbar-color: #a18aaf #e5d9ee; scrollbar-width: thin; }
+.trending-viewport:focus-visible { outline: 3px solid #8e5eca; outline-offset: 3px; border-radius: 6px; }
+.trending-track { display: grid; grid-auto-flow: column; grid-auto-columns: 215px; gap: 17px; width: max-content; }
+.trending-track .book-card { scroll-snap-align: start; background: var(--paper); }
+.trending-track .book-cover { height: 235px; max-height: 235px; }
+.trending-track .book-title { font-size: 14px; }
+.trending-track .card-meta { flex-wrap: wrap; }
+.trending-more { margin-top: 15px; text-align: center; }
+.trending-more .button { font-size: 10px; min-height: 37px; }
+.trending-continuation-note { text-align: center; margin-top: 10px; font-size: 9px; color: var(--muted); }
+.trending-panel .catalog-note { font-size: 9px; }
+@media (max-width: 1150px) {
+  .site-header { flex-wrap: wrap; }
+  .site-header .main-nav { order: 3; width: 100%; }
+  .site-header .main-nav button { flex: 1; }
+}
+@media (max-width: 620px) {
+  .site-header .main-nav { flex-wrap: wrap; gap: 4px; border-radius: 17px; }
+  .site-header .main-nav button { flex: 1 1 calc(50% - 4px); font-size: 11px; padding: 8px; border-radius: 12px; }
+  .panel.trending-panel { margin-top: 24px; padding: 21px 14px 15px; }
+  .trending-heading { align-items: start; gap: 10px; }
+  .trending-heading h2 { font-size: 33px; }
+  .trending-heading p { font-size: 10px; }
+  .trending-sticker { font-size: 7px; letter-spacing: .5px; padding: 11px 9px; }
+  .trending-sticker svg { width: 18px; }
+  .trending-tools { gap: 13px; margin-top: 17px; }
+  .trending-tools .filter-fields { width: 100%; }
+  .trending-tools .filter-fields label { display: block; flex: 1; }
+  .trending-tools .filter-fields select { display: block; width: 100%; min-width: 0; margin-top: 5px; font-size: 10px; }
+  .trending-actions { width: 100%; justify-content: space-between; }
+  .trending-track { grid-auto-columns: 190px; gap: 13px; }
+  .trending-track .book-cover { height: 220px; max-height: 220px; }
+  .trending-panel .catalog-note { font-size: 8px; }
+}
