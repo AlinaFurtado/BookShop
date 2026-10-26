@@ -1,5 +1,5 @@
 // The browser talks only to our backend. Vite proxies /api in development;
-// the packaged Spring Boot app serves these same paths on localhost:8080.
+// the packaged Spring Boot app serves these paths on the website's own origin.
 export class ApiError extends Error {
   constructor(message, status) {
     super(message)
@@ -42,7 +42,7 @@ export async function api(path, { method = 'GET', body, signal, timeout = 25000 
     return data
   } catch (error) {
     if (controller.signal.aborted && !signal?.aborted) throw new Error('That took too long. Please try again in a moment.', { cause: error })
-    if (error instanceof TypeError) throw new Error('Book Buddy could not reach the server. Check that Spring Boot is running on port 8080.', { cause: error })
+    if (error instanceof TypeError) throw new Error('Book Buddy could not reach the server. Check your connection and try again in a moment.', { cause: error })
     throw error
   } finally {
     clearTimeout(timer)
