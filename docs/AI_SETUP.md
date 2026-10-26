@@ -30,7 +30,10 @@ After the service is Live:
    should be `true`; `googleBooksAvailable` indicates Google is configured.
    This endpoint checks configuration, not live provider readiness, and spends
    no provider quota.
-2. Sign in, enter a reading mood in Pip's panel and click **Find my next chapter**.
+2. Sign in and use the main search's **Describe a book · AI** mode, then press
+   **Ask Pip**. Obvious requests such as “I need a fantasy book with dragons”
+   automatically select this mode before submission. **Title or author** is an
+   explicit override for literal book titles. Pip's separate form also works.
 3. Check that up to four real books appear with catalog evidence, source labels
    and the chosen filters. Fewer or no books is a valid result when metadata is
    insufficient; no book or rating is fabricated.
@@ -45,7 +48,7 @@ shown, open their sites rather than importing their review databases.
 ## Follow one request through the code
 
 ```text
-PipPanel.jsx: reader types a description and explicitly submits
+App.jsx main search or PipPanel.jsx: reader types a description and explicitly submits
   -> App.jsx: POST /api/recommendations with prompt + filters
   -> api.js: same-origin session cookie and fresh CSRF token
   -> RecommendationController: login, 8 KiB body limit, JSON conversion
@@ -56,6 +59,13 @@ PipPanel.jsx: reader types a description and explicitly submits
   -> Java checks IDs, duplicates and literal catalog evidence
   -> React renders up to four BookCards with existing shelf/detail actions
 ```
+
+`searchIntent.js` recognizes conservative request phrasing in the main input.
+It does not call a provider while the reader types. AI and literal catalog
+results have separate labels; an unavailable AI request never falls back to
+searching the full sentence as a title. AI filter changes wait for explicit
+submission, and the displayed results retain their submitted prompt/filters.
+Signing in preserves the request but does not send it automatically.
 
 The model is `openai/gpt-oss-20b` hosted by Groq. Java makes HTTP requests; it
 does not download or run a model on the laptop or Render instance. Two bounded

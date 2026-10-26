@@ -2,6 +2,16 @@
 
 ## 27 October 2026: hosted AI and Google Books integration
 
+### Main search routing correction
+
+- The main search now selects AI for obvious reading requests and offers
+  explicit Title or author / Describe a book modes. AI errors and sign-in
+  requirements do not substitute literal Open Library matches.
+- Four Node test groups passed for request classification, real title/author
+  exceptions, ambiguous text and invalid input. Frontend lint/build passed.
+- AI results display below the main form with the submitted request and filters.
+  Provider behavior still requires a real end-to-end check after deployment.
+
 - Final React lint and production build passed for the new Pip panel, result
   cards, Google cover/rating labels and detail enrichment.
 - The backend package/test command was requested and declined. The new Java

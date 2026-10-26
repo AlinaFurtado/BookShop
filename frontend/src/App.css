@@ -364,6 +364,19 @@ h2 { letter-spacing: -.7px; font-size: 26px; line-height: 1.1; }
 }
 
 /* Pip's AI corner keeps the same paper, ink and slightly wonky sticker feel. */
+.search-mode-picker { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+.search-mode-picker button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; border: 1px solid #c8b9a2; border-radius: 7px; color: var(--muted); background: #fffaf0; font-size: 11px; font-weight: 700; }
+.search-mode-picker button[aria-pressed="true"] { color: #fffaf0; background: var(--purple); border-color: var(--purple); }
+.search-route-help { grid-column: 1 / -1; font-size: 11px; line-height: 1.7; color: var(--muted); margin: 0; }
+.search-is-ai { border-color: #b79acb; }
+.main-ai-options { grid-column: 1 / -1; color: var(--muted); }
+.main-ai-options > label { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.main-ai-options input { accent-color: var(--purple); width: 15px; height: 15px; }
+.main-ai-options p { font-size: 10px; line-height: 1.7; margin-top: 8px; }
+.ai-submitted-request { font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; color: #655570; background: #fffbf2; padding: 12px 14px; border-radius: 8px; margin: 14px 0; }
+.ai-submitted-request small { display: block; font-size: 10px; margin-top: 5px; color: var(--muted); }
+.discover-panel > .ai-results-panel { margin-top: 18px; box-shadow: none; border: 1px solid #d5c1e4; }
+@media (max-width: 620px) { .search-mode-picker { gap: 6px; }.search-mode-picker button { flex: 1; justify-content: center; padding: 10px 6px; font-size: 10px; }.search-route-help { font-size: 10px; }.discover-panel > .ai-results-panel { padding: 16px 11px; } }
 .pip-ai-form { background: #fffbf2; border: 1.5px solid var(--ink); border-radius: 12px; box-shadow: 2px 3px 0 #b7c58d; padding: 16px; margin: 5px 0 24px; }
 .pip-ai-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
 .pip-ai-heading .eyebrow { font-size: 7px; letter-spacing: .8px; margin-bottom: 0; line-height: 1.5; }

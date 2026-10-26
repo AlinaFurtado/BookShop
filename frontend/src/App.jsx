@@ -11,6 +11,7 @@ import PassportCollection from './components/PassportCollection'
 import PassportModal from './components/PassportModal'
 import TrendingSection from './components/TrendingSection'
 import { GENRES } from './bookData'
+import { looksLikeReadingRequest } from './searchIntent'
 import './App.css'
 
 function Filters({ prefix, genre, minRating, onGenre, onRating, disabled }) {
@@ -34,6 +35,8 @@ function App() {
   const [books, setBooks] = useState([])
   const [view, setView] = useState('shelf')
   const [title, setTitle] = useState('')
+  const [searchOverride, setSearchOverride] = useState(null)
+  const [searchIncludeOlder, setSearchIncludeOlder] = useState(false)
   const [genre, setGenre] = useState('')
   const [minRating, setMinRating] = useState('')
   const [loadingKind, setLoadingKind] = useState('featured')
@@ -52,6 +55,7 @@ function App() {
   const [aiResult, setAiResult] = useState(null)
   const [aiError, setAiError] = useState('')
   const [aiFeedback, setAiFeedback] = useState('')
+  const [aiSubmitted, setAiSubmitted] = useState(null)
   const [pipResetKey, setPipResetKey] = useState(0)
   const resultRequest = useRef({ sequence: 0, controller: null })
   const aiRequest = useRef({ sequence: 0, controller: null, running: false })
@@ -63,6 +67,8 @@ function App() {
   const toastTimer = useRef(null)
   const sessionGeneration = useRef(0)
   const successfulQuery = useRef(null)
+  const readingRequestDetected = looksLikeReadingRequest(title)
+  const searchMode = searchOverride || (readingRequestDetected ? 'ai' : 'catalog')
 
   // Independent startup reads. A guest can browse; only signed-in readers
   // have a personal shelf. Abort on unmount (also safe in React StrictMode).
@@ -177,6 +183,7 @@ function App() {
       setUser(null); setShelf([]); setSelectedBook(null); setShelfError('')
       aiRequest.current.sequence += 1; aiRequest.current.controller?.abort(); aiRequest.current.running = false
       setAiLoading(false); setAiResult(null); setAiError(''); setAiFeedback('')
+      setAiSubmitted(null); setTitle(''); setSearchOverride(null); setSearchIncludeOlder(false)
       setPipResetKey((current) => current + 1)
       setLibraryOpen(false)
       setPassportId(null)
@@ -249,6 +256,8 @@ function App() {
   // newer query. The sequence guard is useful even when cancellation is late.
   async function loadResults(kind, { surprise = false, filters = null, append = false } = {}) {
     if (append && (!successfulQuery.current || !pageMeta.hasMore || loadingKind)) return
+    if (surprise) { setSearchOverride(null); setTitle('') }
+    if (aiRequest.current.running) cancelRecommendations()
     resultRequest.current.controller?.abort()
     const controller = new AbortController()
     const sequence = ++resultRequest.current.sequence
@@ -301,14 +310,22 @@ function App() {
   }
 
   async function recommendBooks({ prompt, includeOlder }) {
-    if (aiRequest.current.running || sessionLoading || !aiStatus?.available) return
-    if (!user) { openAuth('login'); return }
-    if (prompt.length < 10 || prompt.length > 600) return
+    if (aiRequest.current.running) return
+    setSearchOverride('ai')
+    setTitle(prompt); setSearchIncludeOlder(!!includeOlder)
+    resultRequest.current.sequence += 1; resultRequest.current.controller?.abort(); setLoadingKind('')
+    setAiError(''); setAiFeedback(''); setAiResult(null); setAiSubmitted(null)
+    focusAiResults()
+    if (sessionLoading || aiStatusLoading) { setAiFeedback('Checking your session and Pip’s availability. Please submit again in a moment.'); return }
+    if (!aiStatus?.available) { setAiError(aiStatus?.message || 'AI recommendations are unavailable right now. Try Title or author search.'); return }
+    if (prompt.length < 10 || prompt.length > 600) { setAiError('Use 10–600 characters to describe the book you want.'); return }
+    if (!user) { setAiFeedback('Sign in, then press Ask Pip again to send this reading request.'); openAuth('login'); return }
     const controller = new AbortController()
     const sequence = ++aiRequest.current.sequence
     const generation = sessionGeneration.current
     aiRequest.current.controller = controller
     aiRequest.current.running = true
+    setAiSubmitted({ prompt, genre, minRating, includeOlder: !!includeOlder })
     setAiLoading(true); setAiError(''); setAiFeedback(''); setAiResult(null)
     focusAiResults()
     try {
@@ -320,7 +337,7 @@ function App() {
       if (controller.signal.aborted || sequence !== aiRequest.current.sequence || generation !== sessionGeneration.current) return
       if (error.status === 401) {
         setUser(null); setShelf([])
-        setAiError('Your session ended. Sign in, then press “Find my next chapter” again when you’re ready.')
+        setAiError('Your session ended. Sign in, then submit this reading request again when you are ready.')
         openAuth('login')
       } else setAiError(error.message)
     } finally {
@@ -332,6 +349,22 @@ function App() {
     aiRequest.current.sequence += 1; aiRequest.current.controller?.abort(); aiRequest.current.running = false
     setAiLoading(false); setAiError('')
     setAiFeedback('Stopped waiting for these recommendations. A request already sent to the AI service may still finish and count toward its allowance.')
+  }
+
+  function chooseSearchMode(mode) {
+    setSearchOverride(mode)
+    if (mode === 'ai') {
+      resultRequest.current.sequence += 1; resultRequest.current.controller?.abort(); setLoadingKind('')
+    } else if (aiRequest.current.running) cancelRecommendations()
+  }
+
+  function updateDiscoveryFilters(nextGenre, nextRating) {
+    setGenre(nextGenre); setMinRating(nextRating)
+    // Changing AI filters never sends a model request or the draft as a title.
+    // Catalog filters apply to the last submitted query, not unsubmitted text.
+    if (searchMode === 'ai') return
+    const submittedTitle = successfulQuery.current?.title || ''
+    loadResults(submittedTitle ? 'search' : 'featured', { filters: { title: submittedTitle, genre: nextGenre, minRating: nextRating } })
   }
 
   const loadedCountLabel = pageMeta.total == null
@@ -362,23 +395,41 @@ function App() {
 
           <PipPanel key={pipResetKey} busy={!!loadingKind} aiStatus={aiStatus} aiStatusLoading={aiStatusLoading} aiBusy={aiLoading} sessionLoading={sessionLoading} signedIn={!!user} filtersLabel={`${genre || 'Any genre'} · ${minRating ? `${minRating}+ stars` : 'Any rating'}`} onRecommend={recommendBooks} onCancelRecommend={cancelRecommendations} onMood={(nextGenre) => {
             setGenre(nextGenre)
-            setTitle('')
+            setTitle(''); setSearchOverride(null)
             loadResults('featured', { filters: { genre: nextGenre, minRating } })
           }} />
         </div>
 
-        {(aiLoading || aiResult || aiError || aiFeedback) && <section className="panel ai-results-panel" ref={aiResultsRef} tabIndex={-1} aria-labelledby="ai-results-title" aria-busy={aiLoading}>
-          <div className="discover-heading"><div><span className="eyebrow">PIP’S VERY PARTICULAR PICKS</span><h2 id="ai-results-title">Your next plot twist<span className="purple"> ✦</span></h2><p className="results-subtitle">Real catalog books, matched to your description. A suggestion, never a reading assignment.</p></div><span className="ai-results-stamp"><Icon name="spark" size={17} />Picked with AI</span></div>
+        <TrendingSection sectionRef={trendingRef} shelf={shelf} pendingKey={pendingKey} locked={!!pendingKey || sessionLoading} onOpen={setSelectedBook} onAdd={addBook} onStatus={updateStatus} />
+
+        <section className="panel discover-panel" ref={discoverRef} id="discover" aria-labelledby="results-title"><div className="discover-heading"><div><span className="eyebrow">LITTLE DOORS INTO NEW WORLDS</span><h2 id="results-title">{searchMode === 'ai' ? 'Tell us your next chapter' : resultMeta.title}<span className="purple"> ✦</span></h2><p className="results-subtitle" aria-live="polite">{searchMode === 'ai' ? 'Describe a reading mood. Pip will look for real books that fit.' : resultMeta.subtitle}</p></div><button className="button surprise-button" onClick={() => loadResults('featured', { surprise: true })} disabled={!!loadingKind}><Icon name="dice" size={17} />Surprise me</button></div>
+          <form className={`catalog-search ${searchMode === 'ai' ? 'search-is-ai' : ''}`} onSubmit={(event) => {
+            event.preventDefault()
+            if (searchMode === 'ai') recommendBooks({ prompt: title.trim(), includeOlder: searchIncludeOlder })
+            else if (title.trim().length > 160) setResultError('Title or author searches are limited to 160 characters. Choose Describe a book for a longer reading request.')
+            else loadResults(title.trim() ? 'search' : 'featured')
+          }}>
+            <div className="search-mode-picker" role="group" aria-label="Search type">
+              <button type="button" aria-pressed={searchMode === 'catalog'} onClick={() => chooseSearchMode('catalog')}><Icon name="search" size={15} />Title or author</button>
+              <button type="button" aria-pressed={searchMode === 'ai'} onClick={() => chooseSearchMode('ai')}><Icon name="spark" size={15} />Describe a book · AI</button>
+            </div>
+            <label className="search-field" htmlFor="book-search"><Icon name={searchMode === 'ai' ? 'spark' : 'search'} size={19} /><span className="sr-only">{searchMode === 'ai' ? 'Describe the book you want to read' : 'Search by book title or author'}</span><input id="book-search" type="search" value={title} disabled={aiLoading} onChange={(event) => { setTitle(event.target.value); if (!event.target.value.trim()) setSearchOverride(null) }} maxLength={600} minLength={searchMode === 'ai' ? 10 : undefined} required={searchMode === 'ai'} placeholder={searchMode === 'ai' ? 'I need a fantasy book with dragons…' : 'Search a title or author, or describe your next read…'} aria-describedby="search-route-help" /></label>
+            <button className={`button ${searchMode === 'ai' ? 'button-purple' : 'button-coral'} search-submit`} disabled={searchMode === 'ai' ? aiLoading || sessionLoading || aiStatusLoading : !!loadingKind} type="submit">{searchMode === 'ai' ? aiLoading ? <><span className="spinner" />Asking Pip…</> : <>{user ? 'Ask Pip' : 'Sign in to ask Pip'}<Icon name="spark" size={16} /></> : <>Find a book<Icon name="arrow" size={17} /></>}</button>
+            <p id="search-route-help" className="search-route-help" role="status">{searchMode === 'ai' ? <>{!searchOverride && readingRequestDetected ? 'Reading request detected. ' : ''}<strong>AI recommendations</strong> match your description to real catalog books. {aiStatusLoading ? 'Checking availability…' : !aiStatus?.available ? aiStatus?.message || 'AI is unavailable right now.' : !user ? 'Sign in, then submit this request.' : 'Ready when you press Ask Pip.'}</> : <>Searches book titles and authors. For a reading mood or a request, choose <strong>Describe a book · AI</strong>.</>}</p>
+            <div className="catalog-filters"><Filters prefix="catalog" genre={genre} minRating={minRating} onGenre={(next) => updateDiscoveryFilters(next, minRating)} onRating={(next) => updateDiscoveryFilters(genre, next)} disabled={searchMode === 'ai' ? aiLoading : !!loadingKind} /><button className="text-button reset-filters" type="button" onClick={() => updateDiscoveryFilters('', '')} disabled={!genre && !minRating}>Reset</button></div>
+            {searchMode === 'ai' && <div className="main-ai-options"><label><input type="checkbox" checked={searchIncludeOlder} disabled={aiLoading} onChange={(event) => setSearchIncludeOlder(event.target.checked)} />Include older books, too</label><p>Your request is sent to our hosted AI service only when you submit. Filters apply to that request. Your private shelf and passport notes stay private.</p></div>}
+          </form>
+        {searchMode === 'ai' && <section className="panel ai-results-panel" ref={aiResultsRef} tabIndex={-1} aria-labelledby="ai-results-title" aria-busy={aiLoading}>
+          <div className="discover-heading"><div><span className="eyebrow">PIP’S VERY PARTICULAR PICKS</span><h2 id="ai-results-title">Your next plot twist<span className="purple"> ✦</span></h2><p className="results-subtitle">Real catalog books, matched to your description. A suggestion, never a reading assignment.</p></div><span className="ai-results-stamp"><Icon name="spark" size={17} />{aiResult ? 'Picked with AI' : 'AI recommendations'}</span></div>
+          {aiSubmitted && (aiResult || aiLoading) && <p className="ai-submitted-request"><strong>Reading request:</strong> “{aiSubmitted.prompt}”<small>{aiSubmitted.genre || 'Any genre'} · {aiSubmitted.minRating ? `${aiSubmitted.minRating}+ stars` : 'Any rating'} · {aiSubmitted.includeOlder ? 'Older books included' : 'Last five years'}</small></p>}
+          {!aiLoading && !aiResult && !aiError && !aiFeedback && <p className="ai-empty-hint">Describe what you would enjoy, then press Ask Pip. For example: “I need a fantasy book with dragons.”</p>}
           {aiLoading && <div className="results-loading" role="status"><span className="spinner" /><div><strong>Interpreting your mood. Checking real books.</strong><p>This can take a little while. Pip is a goblin, not a speed-reader.</p></div><button className="text-button" onClick={cancelRecommendations}>Cancel</button></div>}
-          {aiError && <p className="inline-error" role="alert">{aiError} You can still use the regular catalog below.</p>}
+          {aiError && <p className="inline-error" role="alert">{aiError} Choose Title or author above for regular catalog search.</p>}
           {aiFeedback && <p className="ai-result-message" role="status">{aiFeedback}</p>}
           {aiResult && <><p className="ai-result-message" role="status">{aiResult.message || `${aiResult.books.length} ${aiResult.books.length === 1 ? 'book' : 'books'} for your next chapter.`}</p><div className="ai-result-sources"><span>{aiResult.minPublicationYear ? `First published ${aiResult.minPublicationYear}–${aiResult.maxPublicationYear}` : 'Older books included'} · English editions</span>{aiResult.sources?.length > 0 && <span>Book data: {aiResult.sources.join(' · ')}</span>}{aiResult.cached && <span>Reusing a recent match to save the shared allowance.</span>}</div><div className="book-cards">{aiResult.books.map((book) => <BookCard key={book.id} book={book} entry={shelf.find((entry) => entry.workId === book.id)} busy={pendingKey === `add:${book.id}`} locked={!!pendingKey || sessionLoading} onOpen={setSelectedBook} onAdd={addBook} onStatus={updateStatus} />)}</div>{!aiResult.books.length && <p className="ai-empty-hint">Try fewer requirements, a broader genre, or the “Include older books” option. We won’t invent a match.</p>}<p className="catalog-note">AI explanations are based on available catalog information and can be imperfect. Ratings belong to the source named in each book’s details. Google Books edition dates may differ from a work’s original publication year.</p></>}
         </section>}
 
-        <TrendingSection sectionRef={trendingRef} shelf={shelf} pendingKey={pendingKey} locked={!!pendingKey || sessionLoading} onOpen={setSelectedBook} onAdd={addBook} onStatus={updateStatus} />
-
-        <section className="panel discover-panel" ref={discoverRef} id="discover" aria-labelledby="results-title"><div className="discover-heading"><div><span className="eyebrow">LITTLE DOORS INTO NEW WORLDS</span><h2 id="results-title">{resultMeta.title}<span className="purple"> ✦</span></h2><p className="results-subtitle" aria-live="polite">{resultMeta.subtitle}</p></div><button className="button surprise-button" onClick={() => loadResults('featured', { surprise: true })} disabled={!!loadingKind}><Icon name="dice" size={17} />Surprise me</button></div>
-          <form className="catalog-search" onSubmit={(event) => { event.preventDefault(); loadResults(title.trim() ? 'search' : 'featured') }}><label className="search-field" htmlFor="book-search"><Icon name="search" size={19} /><span className="sr-only">Search by book title or author</span><input id="book-search" type="search" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={160} placeholder="Search a title or author. Find your next obsession..." /></label><button className="button button-coral" disabled={!!loadingKind} type="submit">Find a book <Icon name="arrow" size={17} /></button><div className="catalog-filters"><Filters prefix="catalog" genre={genre} minRating={minRating} onGenre={(next) => { setGenre(next); loadResults(title.trim() ? 'search' : 'featured', { filters: { genre: next, minRating } }) }} onRating={(next) => { setMinRating(next); loadResults(title.trim() ? 'search' : 'featured', { filters: { genre, minRating: next } }) }} disabled={!!loadingKind} /><button className="text-button reset-filters" type="button" onClick={() => { setGenre(''); setMinRating(''); loadResults(title.trim() ? 'search' : 'featured', { filters: { genre: '', minRating: '' } }) }} disabled={!genre && !minRating}>Reset</button></div></form>
+          {searchMode === 'catalog' && <>
           {pageMeta.source && <div className={`catalog-source ${pageMeta.source === 'curated' ? 'is-offline' : ''}`} role="status"><strong>{pageMeta.source === 'curated' ? 'Offline collection — live connection unavailable' : 'Live Open Library catalog'}</strong>{pageMeta.message && <span>{pageMeta.message}</span>}{pageMeta.source === 'curated' && <button className="text-button" disabled={!!loadingKind} onClick={() => loadResults('featured', { filters: successfulQuery.current || { title: title.trim(), genre, minRating } })}>Retry Open Library <Icon name="arrow" size={14} /></button>}</div>}
           <div className="results-toolbar"><span className="results-label"><Icon name="leaf" size={14} />{pageMeta.minPublicationYear ? `English editions · First published ${pageMeta.minPublicationYear}–${pageMeta.maxPublicationYear}` : 'Matching titles from every era'}</span><span>{!loadingKind && loadedCountLabel}</span></div>
           {loadingKind && loadingKind !== 'more' && <div className="results-loading" role="status"><span className="spinner" /><div><strong>Looking through the stacks…</strong><p>Fetching real books and reader ratings.</p></div><button className="text-button" onClick={cancelResults}>Cancel</button></div>}
@@ -392,6 +443,7 @@ function App() {
             {loadingKind === 'more' && <button className="text-button" onClick={cancelResults}>Cancel</button>}
           </div>
           <p className="catalog-note">Children’s books have their own home: choose Kids in Genre. Surprise Me skips them. Audience labels depend on Open Library’s cataloging.<br />Books, covers & reader ratings from Open Library. Missing cover? We dressed it up. Ratings are never made up.</p>
+          </>}
         </section>
       </main>
       <footer className="site-footer"><span className="footer-brand"><Icon name="book" size={17} />bookbuddy<span>✦</span></span><p>Made for curious minds & gloriously overflowing shelves.</p><span className="footer-local"><span />Your little reading nook</span></footer>
